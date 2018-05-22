@@ -22,7 +22,10 @@
 */
 
 #pragma once
+#include "Core.h"
+#include "UObject/CoreNet.h"
 #include "Object.h"
+
 #include "HoudiniAsset.generated.h"
 
 

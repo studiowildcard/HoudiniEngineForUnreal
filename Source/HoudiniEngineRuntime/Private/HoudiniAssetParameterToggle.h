@@ -70,10 +70,10 @@ class HOUDINIENGINERUNTIME_API UHoudiniAssetParameterToggle : public UHoudiniAss
 #if WITH_EDITOR
 
         /** Get value of this property, used by Slate. **/
-        void CheckStateChanged( ECheckBoxState NewState, int32 Idx );
+        void CheckStateChanged( ESlateCheckBoxState::Type NewState, int32 Idx );
 
         /** Return checked state of this property, used by Slate. **/
-        ECheckBoxState IsChecked( int32 Idx ) const;
+        ESlateCheckBoxState::Type IsChecked( int32 Idx ) const;
 
 #endif
 

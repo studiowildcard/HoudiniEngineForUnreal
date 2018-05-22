@@ -27,8 +27,8 @@
 #include "HoudiniAssetParameterFolder.h"
 #include "HoudiniAssetComponent.h"
 
-UHoudiniAssetParameterFolderList::UHoudiniAssetParameterFolderList( const FObjectInitializer & ObjectInitializer)
-    : Super( ObjectInitializer )
+UHoudiniAssetParameterFolderList::UHoudiniAssetParameterFolderList( const class FPostConstructInitializeProperties& PCIP)
+    : Super( PCIP )
 {}
 
 UHoudiniAssetParameterFolderList *
@@ -49,8 +49,8 @@ UHoudiniAssetParameterFolderList::Create(
     }
 
     UHoudiniAssetParameterFolderList * HoudiniAssetParameterFolderList =
-        NewObject< UHoudiniAssetParameterFolderList >(
-            Outer, UHoudiniAssetParameterFolderList::StaticClass(), NAME_None,
+        ConstructObject< UHoudiniAssetParameterFolderList >(
+			UHoudiniAssetParameterFolderList::StaticClass(), Outer, NAME_None,
             RF_Public | RF_Transactional );
 
     HoudiniAssetParameterFolderList->CreateParameter(

@@ -25,16 +25,13 @@
  *      Toronto, Ontario
  *      Canada   M5J 2M2
  *      416-504-9876
- *
- * COMMENTS:
- *      This file is generated. Do not modify directly.
  */
 
 /*
 
-    Houdini Version: 16.5.394
-    Houdini Engine Version: 3.1.13
-    Unreal Version: 4.18.0
+    Houdini Version: 16.5.405
+    Houdini Engine Version: 3.1.11
+    Unreal Version: 4.5.0 (ARK)
 
 */
 
@@ -43,12 +40,11 @@ using System.IO;
 
 public class HoudiniEngineEditor : ModuleRules
 {
-    public HoudiniEngineEditor( ReadOnlyTargetRules Target ) : base( Target )
+    public HoudiniEngineEditor( TargetInfo Target )
     {
         PCHUsage = PCHUsageMode.UseSharedPCHs;
-        bool bIsRelease = true;
-        string HFSPath = "";
-        string HoudiniVersion = "16.5.394";
+        string HFSPath = "Houdini";
+        string HoudiniVersion = "16.5.405";
 
         // Check if we are compiling on unsupported platforms.
         if( Target.Platform != UnrealTargetPlatform.Win64 &&
@@ -58,57 +54,6 @@ public class HoudiniEngineEditor : ModuleRules
             string Err = string.Format( "Houdini Engine Runtime: Compiling on unsupported platform." );
             System.Console.WriteLine( Err );
             throw new BuildException( Err );
-        }
-
-        if( bIsRelease )
-        {
-            if( Target.Platform == UnrealTargetPlatform.Win64 )
-            {
-                // We first check if Houdini Engine is installed.
-                string HPath = "C:/Program Files/Side Effects Software/Houdini Engine " + HoudiniVersion;
-                if( !Directory.Exists( HPath ) )
-                {
-                    // If Houdini Engine is not installed, we check for Houdini installation.
-                    HPath = "C:/Program Files/Side Effects Software/Houdini " + HoudiniVersion;
-                    if( !Directory.Exists( HPath ) )
-                    {
-                        if ( !Directory.Exists( HFSPath ) )
-                        {
-                            string Err = string.Format( "Houdini Engine : Please install Houdini or Houdini Engine {0}", HoudiniVersion );
-                            System.Console.WriteLine( Err );
-                        }
-                    }
-                    else
-                    {
-                        HFSPath = HPath;
-                    }
-                }
-                else
-                {
-                    HFSPath = HPath;
-                }
-            }
-            else if( Target.Platform == UnrealTargetPlatform.Mac )
-            {
-                string HPath = "/Applications/Houdini/Houdini" + HoudiniVersion + "/Frameworks/Houdini.framework/Versions/Current/Resources";
-                if( !Directory.Exists( HPath ) )
-                {
-                    if ( !Directory.Exists( HFSPath ) )
-                    {
-                        string Err = string.Format( "Houdini Engine : Please install Houdini {0}", HoudiniVersion );
-                        System.Console.WriteLine( Err );
-                    }
-                }
-                else
-                {
-                    HFSPath = HPath;
-                }
-            }
-            else
-            {
-                HFSPath = System.Environment.GetEnvironmentVariable( "HFS" );
-                System.Console.WriteLine( "Linux - found HFS:" + HFSPath );
-            }
         }
 
         string HAPIIncludePath = "";
@@ -142,13 +87,7 @@ public class HoudiniEngineEditor : ModuleRules
         PrivateIncludePaths.AddRange(
             new string[] {
                 "HoudiniEngineEditor/Private",
-                "HoudiniEngineRuntime/Private"
-            }
-        );
-
-        PrivateIncludePathModuleNames.AddRange(
-            new string[] {
-                "PlacementMode"
+                "HoudiniEngineRuntime/Private",
             }
         );
 
@@ -167,6 +106,7 @@ public class HoudiniEngineEditor : ModuleRules
         PrivateDependencyModuleNames.AddRange(
             new string[]
             {
+                "UnrealEd",
                 "AppFramework",
                 "AssetTools",
                 "ContentBrowser",
@@ -177,6 +117,7 @@ public class HoudiniEngineEditor : ModuleRules
                 "InputCore",
                 "LevelEditor",
                 "MainFrame",
+                "PlacementMode",
                 "Projects",
                 "PropertyEditor",
                 "RHI",
@@ -184,15 +125,14 @@ public class HoudiniEngineEditor : ModuleRules
                 "RenderCore",
                 "ShaderCore",
                 "TargetPlatform",
-                "UnrealEd",
-                "ApplicationCore",
+                //"ApplicationCore",
             }
         );
 
         DynamicallyLoadedModuleNames.AddRange(
             new string[]
             {
-                "PlacementMode",
+                // ... add any modules that your module loads dynamically here ...
             }
         );
     }

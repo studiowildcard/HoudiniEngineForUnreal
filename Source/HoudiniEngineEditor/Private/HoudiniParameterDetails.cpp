@@ -46,10 +46,10 @@
 #include "HoudiniRuntimeSettings.h"
 #include "SNewFilePathPicker.h"
 
-#include "CurveEditorSettings.h"
+//#include "CurveEditorSettings.h"
 #include "DetailLayoutBuilder.h"
 #include "Editor/SceneOutliner/Public/SceneOutlinerModule.h"
-#include "Editor/SceneOutliner/Public/SceneOutlinerPublicTypes.h"
+//#include "Editor/SceneOutliner/Public/SceneOutlinerPublicTypes.h"
 #include "Editor/UnrealEd/Public/AssetThumbnail.h"
 #include "Editor/UnrealEd/Public/Layers/ILayers.h"
 #include "Editor/PropertyEditor/Public/PropertyCustomizationHelpers.h"
@@ -65,10 +65,10 @@
 #include "SCurveEditor.h"
 #include "SAssetDropTarget.h"
 #include "Sound/SoundBase.h"
-#include "UnitConversion.h"
+//#include "UnitConversion.h"
 #include "Widgets/Colors/SColorPicker.h"
 #include "Widgets/Colors/SColorBlock.h"
-#include "Widgets/Input/NumericUnitTypeInterface.inl"
+//#include "Widgets/Input/NumericUnitTypeInterface.inl"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SComboBox.h"
 #include "Widgets/Input/SEditableTextBox.h"
@@ -87,10 +87,10 @@ FHoudiniParameterDetails::CreateNameWidget( UHoudiniAssetParameter* InParam, FDe
     if ( !InParam )
         return;
 
-    FText ParameterLabelText = FText::FromString( InParam->GetParameterLabel() );
-    const FText & FinalParameterLabelText = WithLabel ? ParameterLabelText : FText::GetEmpty();
+    FString ParameterLabelText = InParam->GetParameterLabel();
+    const FString& FinalParameterLabelText = WithLabel ? ParameterLabelText : TEXT("");
 
-    FText ParameterTooltip = GetParameterTooltip( InParam );
+    FString ParameterTooltip = GetParameterTooltip( InParam );
     if ( InParam->bIsChildOfMultiparm && InParam->ParentParameter )
     {
         TSharedRef< SHorizontalBox > HorizontalBox = SNew( SHorizontalBox );
@@ -164,11 +164,11 @@ FHoudiniParameterDetails::CreateNameWidget( UHoudiniAssetParameter* InParam, FDe
     }
 }
 
-FText
+FString
 FHoudiniParameterDetails::GetParameterTooltip( UHoudiniAssetParameter* InParam )
 {
     if ( !InParam )
-        return FText();
+        return TEXT("");
 
     /*
     FString Tooltip = InParam->GetParameterLabel() + TEXT(" (") + InParam->GetParameterName() + TEXT(")");
@@ -179,9 +179,9 @@ FHoudiniParameterDetails::GetParameterTooltip( UHoudiniAssetParameter* InParam )
     */
     
     if ( !InParam->GetParameterHelp().IsEmpty() )
-        return FText::FromString( InParam->GetParameterHelp() );
+        return InParam->GetParameterHelp();
     else
-        return FText::FromString( InParam->GetParameterLabel() + TEXT( " (" ) + InParam->GetParameterName() + TEXT( ")" ) );
+        return InParam->GetParameterLabel() + TEXT( " (" ) + InParam->GetParameterName() + TEXT( ")" );
 }
 
 void 
@@ -282,7 +282,7 @@ FHoudiniParameterDetails::CreateWidget( TSharedPtr< SVerticalBox > VerticalBox, 
 void 
 FHoudiniParameterDetails::CreateWidgetFile( IDetailCategoryBuilder & LocalDetailCategoryBuilder, class UHoudiniAssetParameterFile& InParam )
 {
-    FDetailWidgetRow& Row = LocalDetailCategoryBuilder.AddCustomRow( FText::GetEmpty() );
+    FDetailWidgetRow& Row = LocalDetailCategoryBuilder.AddCustomRow( TEXT("") );
 
     // Create the standard parameter name widget.
     CreateNameWidget( &InParam, Row, true );
@@ -347,7 +347,7 @@ FHoudiniParameterDetails::CreateWidgetFolderList( IDetailCategoryBuilder & Local
     TWeakObjectPtr<UHoudiniAssetParameterFolderList> MyParam( &InParam );
     TSharedRef< SHorizontalBox > HorizontalBox = SNew( SHorizontalBox );
 
-    LocalDetailCategoryBuilder.AddCustomRow( FText::GetEmpty() )
+    LocalDetailCategoryBuilder.AddCustomRow( TEXT("") )
     [
         SAssignNew(HorizontalBox, SHorizontalBox)
     ];
@@ -357,8 +357,8 @@ FHoudiniParameterDetails::CreateWidgetFolderList( IDetailCategoryBuilder & Local
         UHoudiniAssetParameter * HoudiniAssetParameterChild = InParam.ChildParameters[ ParameterIdx ];
         if ( HoudiniAssetParameterChild->IsA( UHoudiniAssetParameterFolder::StaticClass() ) )
         {
-            FText ParameterLabelText = FText::FromString( HoudiniAssetParameterChild->GetParameterLabel() );
-            FText ParameterToolTip = GetParameterTooltip( HoudiniAssetParameterChild );
+            FString ParameterLabelText = HoudiniAssetParameterChild->GetParameterLabel();
+            FString ParameterToolTip = GetParameterTooltip( HoudiniAssetParameterChild );
 
             HorizontalBox->AddSlot().Padding( 0, 2, 0, 2 )
             [
@@ -387,11 +387,11 @@ FHoudiniParameterDetails::CreateWidgetFolderList( IDetailCategoryBuilder & Local
     {
         TSharedPtr< STextBlock > TextBlock;
 
-        LocalDetailCategoryBuilder.AddCustomRow( FText::GetEmpty() )
+        LocalDetailCategoryBuilder.AddCustomRow( TEXT("") )
         [
             SAssignNew( TextBlock, STextBlock )
-            .Text( FText::GetEmpty() )
-            .ToolTipText( FText::GetEmpty() )
+			.Text( FString() )
+			.ToolTipText( FString() )
             .Font( FEditorStyle::GetFontStyle( TEXT( "PropertyWindow.NormalFont" ) ) )
             .WrapTextAt( HAPI_UNREAL_DESIRED_ROW_FULL_WIDGET_WIDTH )
         ];
@@ -404,7 +404,7 @@ FHoudiniParameterDetails::CreateWidgetFolderList( IDetailCategoryBuilder & Local
 void 
 FHoudiniParameterDetails::CreateWidgetMultiparm( IDetailCategoryBuilder & LocalDetailCategoryBuilder, class UHoudiniAssetParameterMultiparm& InParam )
 {
-    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( FText::GetEmpty() );
+    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( TEXT("") );
     
     // Create the standard parameter name widget.
     CreateNameWidget( &InParam, Row, true );
@@ -539,19 +539,24 @@ protected:
 void
 SHoudiniAssetParameterRampCurveEditor::Construct( const FArguments & InArgs )
 {
+	const FText TooltipText = FText::Format(
+		FText::AsCultureInvariant( TEXT("X Axis: {0}, Y Axis: {1}") ),
+		FText::AsCultureInvariant( InArgs._XAxisName.Get(TEXT("")) ),
+		FText::AsCultureInvariant( InArgs._YAxisName.Get(TEXT("")) )
+	);
+
     SCurveEditor::Construct( SCurveEditor::FArguments()
                              .ViewMinInput( InArgs._ViewMinInput )
                              .ViewMaxInput( InArgs._ViewMaxInput )
-                             .ViewMinOutput( InArgs._ViewMinOutput )
-                             .ViewMaxOutput( InArgs._ViewMaxOutput )
-                             .XAxisName( InArgs._XAxisName )
-                             .YAxisName( InArgs._YAxisName )
+                             .ViewMinOutput( InArgs._ViewMinOutput.Get() )
+                             .ViewMaxOutput( InArgs._ViewMaxOutput.Get() )
+                             .ToolTipText( TooltipText )
                              .HideUI( InArgs._HideUI )
                              .DrawCurve( InArgs._DrawCurve )
                              .TimelineLength( InArgs._TimelineLength )
                              .AllowZoomOutput( InArgs._AllowZoomOutput )
-                             .ShowInputGridNumbers( InArgs._ShowInputGridNumbers )
-                             .ShowOutputGridNumbers( InArgs._ShowOutputGridNumbers )
+                             //.ShowInputGridNumbers( InArgs._ShowInputGridNumbers )
+                             //.ShowOutputGridNumbers( InArgs._ShowOutputGridNumbers )
                              .ShowZoomButtons( InArgs._ShowZoomButtons )
                              .ZoomToFitHorizontal( InArgs._ZoomToFitHorizontal )
                              .ZoomToFitVertical( InArgs._ZoomToFitVertical )
@@ -559,12 +564,13 @@ SHoudiniAssetParameterRampCurveEditor::Construct( const FArguments & InArgs )
 
     HoudiniAssetParameterRamp = nullptr;
 
-    UCurveEditorSettings * CurveEditorSettings = GetSettings();
-    if ( CurveEditorSettings )
-    {
-        CurveEditorSettings->SetCurveVisibility( ECurveEditorCurveVisibility::AllCurves );
-        CurveEditorSettings->SetTangentVisibility( ECurveEditorTangentVisibility::NoTangents );
-    }
+	//JC: removed curve editor setting stuff
+    //UCurveEditorSettings * CurveEditorSettings = GetSettings();
+    //if ( CurveEditorSettings )
+    //{
+    //    CurveEditorSettings->SetCurveVisibility( ECurveEditorCurveVisibility::AllCurves );
+    //    CurveEditorSettings->SetTangentVisibility( ECurveEditorTangentVisibility::NoTangents );
+    //}
 }
 
 FReply
@@ -584,7 +590,7 @@ void
 FHoudiniParameterDetails::CreateWidgetRamp( IDetailCategoryBuilder & LocalDetailCategoryBuilder, class UHoudiniAssetParameterRamp& InParam )
 {
     TWeakObjectPtr<UHoudiniAssetParameterRamp> MyParam( &InParam );
-    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( FText::GetEmpty() );
+    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( TEXT("") );
     
     // Create the standard parameter name widget.
     CreateNameWidget( &InParam, Row, true );
@@ -646,8 +652,8 @@ FHoudiniParameterDetails::CreateWidgetRamp( IDetailCategoryBuilder & LocalDetail
         if ( !InParam.HoudiniAssetParameterRampCurveFloat )
         {
             InParam.HoudiniAssetParameterRampCurveFloat = Cast< UHoudiniAssetParameterRampCurveFloat >(
-                NewObject< UHoudiniAssetParameterRampCurveFloat >(
-                    InParam.PrimaryObject, UHoudiniAssetParameterRampCurveFloat::StaticClass(),
+                ConstructObject< UHoudiniAssetParameterRampCurveFloat >(
+                    UHoudiniAssetParameterRampCurveFloat::StaticClass(), InParam.PrimaryObject,
                     NAME_None, RF_Transactional | RF_Public ) );
 
             InParam.HoudiniAssetParameterRampCurveFloat->SetParentRampParameter( &InParam );
@@ -664,8 +670,8 @@ FHoudiniParameterDetails::CreateWidgetRamp( IDetailCategoryBuilder & LocalDetail
         if ( !InParam.HoudiniAssetParameterRampCurveColor )
         {
             InParam.HoudiniAssetParameterRampCurveColor = Cast< UHoudiniAssetParameterRampCurveColor >(
-                NewObject< UHoudiniAssetParameterRampCurveColor >(
-                    InParam.PrimaryObject, UHoudiniAssetParameterRampCurveColor::StaticClass(),
+                ConstructObject< UHoudiniAssetParameterRampCurveColor >(
+				UHoudiniAssetParameterRampCurveColor::StaticClass(), InParam.PrimaryObject,
                     NAME_None, RF_Transactional | RF_Public ) );
 
             InParam.HoudiniAssetParameterRampCurveColor->SetParentRampParameter( &InParam );
@@ -690,13 +696,13 @@ void
 FHoudiniParameterDetails::CreateWidgetButton( IDetailCategoryBuilder & LocalDetailCategoryBuilder, class UHoudiniAssetParameterButton& InParam )
 {
     TWeakObjectPtr<UHoudiniAssetParameterButton> MyParam( &InParam );
-    FDetailWidgetRow& Row = LocalDetailCategoryBuilder.AddCustomRow( FText::GetEmpty() );
+    FDetailWidgetRow& Row = LocalDetailCategoryBuilder.AddCustomRow( TEXT("") );
 
     // Create the standard parameter name widget.
     CreateNameWidget( &InParam, Row, true );
 
-    FText ParameterLabelText = FText::FromString( InParam.GetParameterLabel() );
-    FText ParameterTooltip = GetParameterTooltip( &InParam );
+    FString ParameterLabelText = InParam.GetParameterLabel();
+    FString ParameterTooltip = GetParameterTooltip( &InParam );
 
     TSharedRef< SHorizontalBox > HorizontalBox = SNew( SHorizontalBox );
     TSharedPtr< SButton > Button;
@@ -730,7 +736,7 @@ FHoudiniParameterDetails::CreateWidgetButton( IDetailCategoryBuilder & LocalDeta
 void 
 FHoudiniParameterDetails::CreateWidgetChoice( IDetailCategoryBuilder & LocalDetailCategoryBuilder, class UHoudiniAssetParameterChoice& InParam )
 {
-    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( FText::GetEmpty() );
+    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( TEXT("") );
 
     // Create the standard parameter name widget.
     CreateNameWidget( &InParam, Row, true );
@@ -777,8 +783,8 @@ FHoudiniParameterDetails::CreateWidgetChoice( IDetailCategoryBuilder & LocalDeta
 void 
 FHoudiniParameterDetails::CreateWidgetChoice( TSharedPtr< SVerticalBox > VerticalBox, class UHoudiniAssetParameterChoice& InParam )
 {
-    FText ParameterLabelText = FText::FromString( InParam.GetParameterLabel() );
-    FText ParameterTooltip = GetParameterTooltip( &InParam );
+    FString ParameterLabelText = InParam.GetParameterLabel();
+    FString ParameterTooltip = GetParameterTooltip( &InParam );
 
     TWeakObjectPtr<UHoudiniAssetParameterChoice> MyParam( &InParam );
     
@@ -826,7 +832,7 @@ FHoudiniParameterDetails::CreateWidgetColor( IDetailCategoryBuilder & LocalDetai
 {
     TWeakObjectPtr<UHoudiniAssetParameterColor> MyParam( &InParam );
 
-    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( FText::GetEmpty() );
+    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( TEXT("") );
 
     // Create the standard parameter name widget.
     CreateNameWidget( &InParam, Row, true );
@@ -868,7 +874,7 @@ FHoudiniParameterDetails::CreateWidgetColor( IDetailCategoryBuilder & LocalDetai
 void 
 FHoudiniParameterDetails::CreateWidgetToggle( IDetailCategoryBuilder & LocalDetailCategoryBuilder, class UHoudiniAssetParameterToggle& InParam )
 {
-    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( FText::GetEmpty() );
+    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( TEXT("") );
     FText ParameterLabelText = FText::FromString( InParam.GetParameterLabel() );
 
     // Create the standard parameter name widget.
@@ -885,8 +891,8 @@ FHoudiniParameterDetails::CreateWidgetToggle( IDetailCategoryBuilder & LocalDeta
             SAssignNew( CheckBox, SCheckBox )
             .OnCheckStateChanged( FOnCheckStateChanged::CreateUObject(
                 &InParam, &UHoudiniAssetParameterToggle::CheckStateChanged, Idx ) )
-            .IsChecked( TAttribute< ECheckBoxState >::Create(
-                TAttribute< ECheckBoxState >::FGetter::CreateUObject(
+            .IsChecked( TAttribute< ESlateCheckBoxState::Type >::Create(
+                TAttribute< ESlateCheckBoxState::Type >::FGetter::CreateUObject(
                     &InParam, &UHoudiniAssetParameterToggle::IsChecked, Idx ) ) )
             .Content()
             [
@@ -908,8 +914,8 @@ FHoudiniParameterDetails::CreateWidgetToggle( IDetailCategoryBuilder & LocalDeta
 void 
 FHoudiniParameterDetails::CreateWidgetToggle( TSharedPtr< SVerticalBox > VerticalBox, class UHoudiniAssetParameterToggle& InParam )
 {
-    FText ParameterLabelText = FText::FromString( InParam.GetParameterLabel() );
-    FText ParameterTooltip = GetParameterTooltip( &InParam );
+    FString ParameterLabelText = InParam.GetParameterLabel();
+    FString ParameterTooltip = GetParameterTooltip( &InParam );
 
     for ( int32 Idx = 0; Idx < InParam.GetTupleSize(); ++Idx )
     {
@@ -919,7 +925,7 @@ FHoudiniParameterDetails::CreateWidgetToggle( TSharedPtr< SVerticalBox > Vertica
             +SHorizontalBox::Slot().MaxWidth( 8 )
             [
                 SNew( STextBlock )
-                .Text( FText::GetEmpty() )
+                .Text( FString() )
                 .ToolTipText( ParameterLabelText )
                 .Font( FEditorStyle::GetFontStyle( TEXT( "PropertyWindow.NormalFont" ) ) )
             ]
@@ -928,8 +934,8 @@ FHoudiniParameterDetails::CreateWidgetToggle( TSharedPtr< SVerticalBox > Vertica
                 SNew( SCheckBox )
                 .OnCheckStateChanged( FOnCheckStateChanged::CreateUObject(
                     &InParam, &UHoudiniAssetParameterToggle::CheckStateChanged, Idx ) )
-                .IsChecked(TAttribute< ECheckBoxState >::Create(
-                    TAttribute< ECheckBoxState >::FGetter::CreateUObject(
+                .IsChecked(TAttribute< ESlateCheckBoxState::Type >::Create(
+                    TAttribute< ESlateCheckBoxState::Type >::FGetter::CreateUObject(
                         &InParam, &UHoudiniAssetParameterToggle::IsChecked, Idx ) ) )
                 .Content()
                 [
@@ -956,19 +962,10 @@ FHoudiniParameterDetails::CreateWidgetFloat( IDetailCategoryBuilder & LocalDetai
         SwappedAxis3Vector = InParam.GetTupleSize() == 3 && Settings->ImportAxis == HRSAI_Unreal;
     }
 
-    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( FText::GetEmpty() );
+    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( TEXT("") );
 
     // Create the standard parameter name widget.
     CreateNameWidget( &InParam, Row, true );
-
-    // Helper function to find a unit from a string (name or abbreviation) 
-    TOptional<EUnit> ParmUnit = FUnitConversion::UnitFromString( *InParam.ValueUnit );
-
-    TSharedPtr<INumericTypeInterface<float>> TypeInterface;
-    if ( FUnitConversion::Settings().ShouldDisplayUnits() && ParmUnit.IsSet() )
-    {
-        TypeInterface = MakeShareable( new TNumericUnitTypeInterface<float>( ParmUnit.GetValue() ) );
-    }
 
     if ( InParam.GetTupleSize() == 3 )
     {
@@ -988,8 +985,7 @@ FHoudiniParameterDetails::CreateWidgetFloat( IDetailCategoryBuilder & LocalDetai
             .OnZCommitted( FOnFloatValueCommitted::CreateLambda(
                 [=]( float Val, ETextCommit::Type TextCommitType ) {
                 MyParam->SetValue( Val, SwappedAxis3Vector ? 1 : 2, true, true );
-            } ) )
-            .TypeInterface( TypeInterface );
+            } ) );
     }
     else
     {
@@ -1028,8 +1024,7 @@ FHoudiniParameterDetails::CreateWidgetFloat( IDetailCategoryBuilder & LocalDetai
                     &InParam, &UHoudiniAssetParameterFloat::OnSliderMovingFinish, Idx ) )
 
                 .SliderExponent( 1.0f )
-                .TypeInterface( TypeInterface )
-            ];
+			];
         }
 
         Row.ValueWidget.Widget = VerticalBox;
@@ -1042,21 +1037,12 @@ void
 FHoudiniParameterDetails::CreateWidgetInt( IDetailCategoryBuilder & LocalDetailCategoryBuilder, class UHoudiniAssetParameterInt& InParam )
 {
     TWeakObjectPtr<UHoudiniAssetParameterInt> MyParam( &InParam );
-    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( FText::GetEmpty() );
+    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( TEXT("") );
 
     // Create the standard parameter name widget.
     CreateNameWidget( &InParam, Row, true );
 
     TSharedRef< SVerticalBox > VerticalBox = SNew( SVerticalBox );
-
-    // Helper function to find a unit from a string (name or abbreviation) 
-    TOptional<EUnit> ParmUnit = FUnitConversion::UnitFromString( *InParam.ValueUnit );
-
-    TSharedPtr<INumericTypeInterface<int32>> TypeInterface;
-    if ( FUnitConversion::Settings().ShouldDisplayUnits() && ParmUnit.IsSet() )
-    {
-        TypeInterface = MakeShareable( new TNumericUnitTypeInterface<int32>( ParmUnit.GetValue() ) );
-    }
 
     for ( int32 Idx = 0; Idx < InParam.GetTupleSize(); ++Idx )
     {
@@ -1092,7 +1078,9 @@ FHoudiniParameterDetails::CreateWidgetInt( IDetailCategoryBuilder & LocalDetailC
                 &InParam, &UHoudiniAssetParameterInt::OnSliderMovingFinish, Idx ) )
 
             .SliderExponent( 1.0f )
-            .TypeInterface( TypeInterface )
+
+			//JC: What is this?
+            //.TypeInterface( TypeInterface )
             ];
 
         if ( NumericEntryBox.IsValid() )
@@ -1141,7 +1129,7 @@ FHoudiniParameterDetails::CreateWidgetInstanceInput( IDetailCategoryBuilder & Lo
 
             FString FieldLabel = InParam.GetFieldLabel(FieldIdx, VariationIdx);
             
-            IDetailGroup& DetailGroup = LocalDetailCategoryBuilder.AddGroup(FName(*FieldLabel), FText::FromString(FieldLabel));
+            IDetailGroup& DetailGroup = LocalDetailCategoryBuilder.AddGroup(FName(*FieldLabel), FieldLabel);
             DetailGroup.AddWidgetRow()
             .NameContent()
             [
@@ -1256,10 +1244,11 @@ FHoudiniParameterDetails::CreateWidgetInstanceInput( IDetailCategoryBuilder & Lo
             {
                 TArray< UFactory * > NewAssetFactories;
                 TSharedRef< SWidget > PropertyMenuAssetPicker =
-                    PropertyCustomizationHelpers::MakeAssetPickerWithMenu(
+					PropertyCustomizationHelpers::MakeAssetPickerWithMenu(
                         FAssetData( InstancedObject ), true,
-                        AllowedClasses, NewAssetFactories, FOnShouldFilterAsset(),
-                        FOnAssetSelected::CreateLambda( [=]( const FAssetData& AssetData ) {
+                        &AllowedClasses, FOnShouldFilterAsset(),
+
+						FOnAssetSelected::CreateLambda( [=]( const FAssetData& AssetData ) {
                             if ( AssetComboButton.IsValid() && MyParam.IsValid() && InputFieldPtr.IsValid() )
                             {
                                 AssetComboButton->SetIsOpen( false );
@@ -1267,6 +1256,7 @@ FHoudiniParameterDetails::CreateWidgetInstanceInput( IDetailCategoryBuilder & Lo
                                 MyParam->OnStaticMeshDropped( Object, InputFieldPtr.Get(), FieldIdx, VariationIdx );
                             }
                         }),
+
                         FSimpleDelegate::CreateUObject(
                             &InParam, &UHoudiniAssetInstanceInput::CloseStaticMeshComboButton,
                             HoudiniAssetInstanceInputField, FieldIdx, VariationIdx ) );
@@ -1386,15 +1376,15 @@ FHoudiniParameterDetails::CreateWidgetInstanceInput( IDetailCategoryBuilder & Lo
                     SNew( SCheckBox )
                     .Style( FEditorStyle::Get(), "TransparentCheckBox" )
                     .ToolTipText( LOCTEXT( "PreserveScaleToolTip", "When locked, scales uniformly based on the current xyz scale values so the object maintains its shape in each direction when scaled" ) )
-                    .OnCheckStateChanged( FOnCheckStateChanged::CreateLambda( [=]( ECheckBoxState NewState ) {
+                    .OnCheckStateChanged( FOnCheckStateChanged::CreateLambda( [=]( ESlateCheckBoxState::Type NewState ) {
                         if ( MyParam.IsValid() && InputFieldPtr.IsValid() )
-                            MyParam->CheckStateChanged( NewState == ECheckBoxState::Checked, InputFieldPtr.Get(), VariationIdx );
+                            MyParam->CheckStateChanged( NewState == ESlateCheckBoxState::Type::Checked, InputFieldPtr.Get(), VariationIdx );
                     }))
-                    .IsChecked( TAttribute< ECheckBoxState >::Create(
-                        TAttribute<ECheckBoxState>::FGetter::CreateLambda( [=]() {
+                    .IsChecked( TAttribute< ESlateCheckBoxState::Type >::Create(
+                        TAttribute<ESlateCheckBoxState::Type>::FGetter::CreateLambda( [=]() {
                             if ( InputFieldPtr.IsValid() && InputFieldPtr->AreOffsetsScaledLinearly( VariationIdx ) )
-                                return ECheckBoxState::Checked;
-                            return ECheckBoxState::Unchecked;
+                                return ESlateCheckBoxState::Type::Checked;
+                            return ESlateCheckBoxState::Type::Unchecked;
                     })))
                     [
                         SNew( SImage )
@@ -1419,7 +1409,8 @@ FHoudiniParameterDetails::Helper_CreateCustomActorPickerWidget( UHoudiniAssetInp
 {
     // Custom Actor Picker showing only the desired Actor types.
     // Note: Code stolen from SPropertyMenuActorPicker.cpp
-    FOnShouldFilterActor ActorFilter = FOnShouldFilterActor::CreateUObject( &InParam, &UHoudiniAssetInput::OnShouldFilterActor );
+	SceneOutliner::FActorFilterPredicate ActorFilter = SceneOutliner::FActorFilterPredicate::CreateUObject(&InParam, &UHoudiniAssetInput::OnShouldFilterActor);
+	
 
     //FHoudiniEngineEditor & HoudiniEngineEditor = FHoudiniEngineEditor::Get();
     //TSharedPtr< ISlateStyle > StyleSet = GEditor->GetSlateStyle();
@@ -1449,7 +1440,7 @@ FHoudiniParameterDetails::Helper_CreateCustomActorPickerWidget( UHoudiniAssetInp
         FSceneOutlinerModule & SceneOutlinerModule =
             FModuleManager::Get().LoadModuleChecked< FSceneOutlinerModule >( TEXT( "SceneOutliner" ) );
 
-        SceneOutliner::FInitializationOptions InitOptions;
+		FSceneOutlinerInitializationOptions InitOptions;
         InitOptions.Mode = ESceneOutlinerMode::ActorPicker;
         InitOptions.Filters->AddFilterPredicate( ActorFilter );
         InitOptions.bFocusSearchBoxWhenOpened = true;
@@ -1490,9 +1481,9 @@ void FHoudiniParameterDetails::Helper_CreateGeometryWidget(
     TSharedPtr< SHorizontalBox > HorizontalBox = NULL;
     // Drop Target: Static Mesh
     VerticalBox->AddSlot().Padding( 0, 2 ).AutoHeight()
-    [
-        SNew( SAssetDropTarget )
-        .OnIsAssetAcceptableForDrop( SAssetDropTarget::FIsAssetAcceptableForDrop::CreateLambda(
+        [
+            SNew( SAssetDropTarget )
+            .OnIsAssetAcceptableForDrop( SAssetDropTarget::FIsAssetAcceptableForDrop::CreateLambda(
                 []( const UObject* InObject ) {
                     return InObject && InObject->IsA< UStaticMesh >();
             } ) )
@@ -1534,9 +1525,9 @@ void FHoudiniParameterDetails::Helper_CreateGeometryWidget(
         }
     ) ) );
 
-    FText MeshNameText = FText::GetEmpty();
+    FString MeshNameText = TEXT("");
     if ( InputObject )
-        MeshNameText = FText::FromString( InputObject->GetName() );
+        MeshNameText = InputObject->GetName();
 
     // ComboBox : Static Mesh
     TSharedPtr< SComboButton > StaticMeshComboButton;
@@ -1575,12 +1566,10 @@ void FHoudiniParameterDetails::Helper_CreateGeometryWidget(
             TArray< const UClass * > AllowedClasses;
             AllowedClasses.Add( UStaticMesh::StaticClass() );
 
-            TArray< UFactory * > NewAssetFactories;
             return PropertyCustomizationHelpers::MakeAssetPickerWithMenu(
                 FAssetData( MyParam->GetInputObject( AtIndex ) ),
                 true,
-                AllowedClasses,
-                NewAssetFactories,
+                &AllowedClasses,
                 FOnShouldFilterAsset(),
                 FOnAssetSelected::CreateLambda( [MyParam, AtIndex, StaticMeshComboButton]( const FAssetData & AssetData ) {
                     if ( StaticMeshComboButton.IsValid() )
@@ -1596,7 +1585,7 @@ void FHoudiniParameterDetails::Helper_CreateGeometryWidget(
 
     // Create tooltip.
     FFormatNamedArguments Args;
-    Args.Add( TEXT( "Asset" ), MeshNameText );
+	Args.Add(TEXT("Asset"), FFormatArgumentValue(FText::FromString(MeshNameText)));
     FText StaticMeshTooltip = FText::Format(
         LOCTEXT( "BrowseToSpecificAssetInContentBrowser",
             "Browse to '{Asset}' in Content Browser" ), Args );
@@ -1827,8 +1816,8 @@ void FHoudiniParameterDetails::Helper_CreateGeometryWidget(
                 .ToolTipText( LOCTEXT( "PreserveScaleToolTip", "When locked, scales uniformly based on the current xyz scale values so the object maintains its shape in each direction when scaled" ) )
                 .OnCheckStateChanged( FOnCheckStateChanged::CreateUObject(
                     this, &UHoudiniAssetInput::CheckStateChanged, AtIndex ) )
-                .IsChecked( TAttribute< ECheckBoxState >::Create(
-                    TAttribute<ECheckBoxState>::FGetter::CreateUObject(
+                .IsChecked( TAttribute< ESlateCheckBoxState::Type >::Create(
+                    TAttribute<ESlateCheckBoxState::Type>::FGetter::CreateUObject(
                         this, &UHoudiniAssetInput::IsChecked, AtIndex ) ) )
                 [
                     SNew( SImage )
@@ -1935,8 +1924,8 @@ FHoudiniParameterDetails::Helper_OnButtonClickSelectActors( TWeakObjectPtr<class
         TArray< UObject * > DummySelectedActors;
         DummySelectedActors.Add( HoudiniAssetActor );
 
-        // Reset selected actor to itself, force refresh and override the lock.
-        DetailsView->SetObjects( DummySelectedActors, true, true );
+        // Reset selected actor to itself, and force refresh
+        DetailsView->SetObjects( DummySelectedActors, true );
     }
 
     // Reselect the Asset Actor. If we don't do this, our Asset parameters will stop
@@ -1965,9 +1954,9 @@ FHoudiniParameterDetails::CreateWidgetInput( IDetailCategoryBuilder & LocalDetai
     // Get thumbnail pool for this builder.
     IDetailLayoutBuilder & DetailLayoutBuilder = LocalDetailCategoryBuilder.GetParentLayout();
     TSharedPtr< FAssetThumbnailPool > AssetThumbnailPool = DetailLayoutBuilder.GetThumbnailPool();
-    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( FText::GetEmpty() );
-    FText ParameterLabelText = FText::FromString( InParam.GetParameterLabel() );
-    FText ParameterTooltip = GetParameterTooltip( &InParam );
+    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( TEXT("") );
+    FString ParameterLabelText = InParam.GetParameterLabel();
+    FString ParameterTooltip = GetParameterTooltip( &InParam );
     Row.NameWidget.Widget =
         SNew( STextBlock )
             .Text( ParameterLabelText )
@@ -2024,8 +2013,8 @@ FHoudiniParameterDetails::CreateWidgetInput( IDetailCategoryBuilder & LocalDetai
                 .ToolTipText(LOCTEXT("KeepWorldTransformCheckboxTip", "Set this Input's object_merge Transform Type to INTO_THIS_OBJECT. If unchecked, it will be set to NONE."))
                 .Font(FEditorStyle::GetFontStyle(TEXT("PropertyWindow.NormalFont")))
             ]
-            .IsChecked(TAttribute< ECheckBoxState >::Create(
-                TAttribute< ECheckBoxState >::FGetter::CreateUObject(
+            .IsChecked(TAttribute< ESlateCheckBoxState::Type >::Create(
+                TAttribute< ESlateCheckBoxState::Type >::FGetter::CreateUObject(
                 &InParam, &UHoudiniAssetInput::IsCheckedKeepWorldTransform)))
             .OnCheckStateChanged(FOnCheckStateChanged::CreateUObject(
                 &InParam, &UHoudiniAssetInput::CheckStateChangedKeepWorldTransform))
@@ -2055,8 +2044,8 @@ FHoudiniParameterDetails::CreateWidgetInput( IDetailCategoryBuilder & LocalDetai
                 .ToolTipText( LOCTEXT( "PackBeforeMergeCheckboxTip", "Pack each separate piece of geometry before merging them into the input." ) )
                 .Font( FEditorStyle::GetFontStyle( TEXT( "PropertyWindow.NormalFont" ) ) )
             ]
-            .IsChecked( TAttribute< ECheckBoxState >::Create(
-                TAttribute< ECheckBoxState >::FGetter::CreateUObject(
+            .IsChecked( TAttribute< ESlateCheckBoxState::Type >::Create(
+                TAttribute< ESlateCheckBoxState::Type >::FGetter::CreateUObject(
                 &InParam, &UHoudiniAssetInput::IsCheckedPackBeforeMerge ) ) )
             .OnCheckStateChanged( FOnCheckStateChanged::CreateUObject(
                 &InParam, &UHoudiniAssetInput::CheckStateChangedPackBeforeMerge ) )
@@ -2080,8 +2069,8 @@ FHoudiniParameterDetails::CreateWidgetInput( IDetailCategoryBuilder & LocalDetai
                 .ToolTipText( LOCTEXT( "ExportAllLODCheckboxTip", "If enabled, all LOD Meshes in this static mesh will be sent to Houdini." ) )
                 .Font( FEditorStyle::GetFontStyle( TEXT( "PropertyWindow.NormalFont" ) ) )
             ]
-            .IsChecked( TAttribute< ECheckBoxState >::Create(
-                TAttribute< ECheckBoxState >::FGetter::CreateUObject(
+            .IsChecked( TAttribute< ESlateCheckBoxState::Type >::Create(
+				TAttribute< ESlateCheckBoxState::Type >::FGetter::CreateUObject(
                 &InParam, &UHoudiniAssetInput::IsCheckedExportAllLODs ) ) )
             .OnCheckStateChanged( FOnCheckStateChanged::CreateUObject(
                 &InParam, &UHoudiniAssetInput::CheckStateChangedExportAllLODs ) )
@@ -2183,8 +2172,8 @@ FHoudiniParameterDetails::CreateWidgetInput( IDetailCategoryBuilder & LocalDetai
             [
                 SNew(SCheckBox)
                 .Style(FEditorStyle::Get(), "Property.ToggleButton.Start")
-                .IsChecked( TAttribute< ECheckBoxState >::Create(
-                    TAttribute< ECheckBoxState >::FGetter::CreateUObject(
+                .IsChecked( TAttribute< ESlateCheckBoxState::Type >::Create(
+                    TAttribute< ESlateCheckBoxState::Type >::FGetter::CreateUObject(
                     &InParam, &UHoudiniAssetInput::IsCheckedExportAsHeightfield ) ) )
                 .OnCheckStateChanged( FOnCheckStateChanged::CreateUObject(
                     &InParam, &UHoudiniAssetInput::CheckStateChangedExportAsHeightfield ) )
@@ -2216,13 +2205,13 @@ FHoudiniParameterDetails::CreateWidgetInput( IDetailCategoryBuilder & LocalDetai
             ];
 
             // Mesh
-            FText MeshTooltip = LOCTEXT("LandscapeExportAsHeightfieldTooltip", "If enabled, the landscape will be exported to Houdini as a heighfield.");
+            FText MeshTooltip = LOCTEXT("LandscapeExportAsMeshTooltip", "If enabled, the landscape will be exported to Houdini as a mesh. (JC: Doesn't pass through material names right now)");
             ButtonOptionsPanel->AddSlot(1, 0)
             [
                 SNew(SCheckBox)
                 .Style(FEditorStyle::Get(), "Property.ToggleButton.Middle")
-                .IsChecked( TAttribute< ECheckBoxState >::Create(
-                    TAttribute< ECheckBoxState >::FGetter::CreateUObject(
+                .IsChecked( TAttribute< ESlateCheckBoxState::Type >::Create(
+                    TAttribute< ESlateCheckBoxState::Type >::FGetter::CreateUObject(
                     &InParam, &UHoudiniAssetInput::IsCheckedExportAsMesh ) ) )
                 .OnCheckStateChanged( FOnCheckStateChanged::CreateUObject(
                     &InParam, &UHoudiniAssetInput::CheckStateChangedExportAsMesh ) )
@@ -2259,8 +2248,8 @@ FHoudiniParameterDetails::CreateWidgetInput( IDetailCategoryBuilder & LocalDetai
             [
                 SNew(SCheckBox)
                 .Style(FEditorStyle::Get(), "Property.ToggleButton.End")
-                .IsChecked( TAttribute< ECheckBoxState >::Create(
-                    TAttribute< ECheckBoxState >::FGetter::CreateUObject(
+                .IsChecked( TAttribute< ESlateCheckBoxState::Type >::Create(
+                    TAttribute< ESlateCheckBoxState::Type >::FGetter::CreateUObject(
                     &InParam, &UHoudiniAssetInput::IsCheckedExportAsPoints ) ) )
                 .OnCheckStateChanged( FOnCheckStateChanged::CreateUObject(
                     &InParam, &UHoudiniAssetInput::CheckStateChangedExportAsPoints ) )
@@ -2305,8 +2294,8 @@ FHoudiniParameterDetails::CreateWidgetInput( IDetailCategoryBuilder & LocalDetai
                     .ToolTipText( LOCTEXT( "LandscapeSelectedTooltip", "If enabled, only the selected Landscape Components will be exported." ) )
                     .Font( FEditorStyle::GetFontStyle( TEXT( "PropertyWindow.NormalFont") ) )
                 ]
-                .IsChecked( TAttribute< ECheckBoxState >::Create(
-                    TAttribute< ECheckBoxState >::FGetter::CreateUObject(
+                .IsChecked( TAttribute< ESlateCheckBoxState::Type >::Create(
+                    TAttribute< ESlateCheckBoxState::Type >::FGetter::CreateUObject(
                         &InParam, &UHoudiniAssetInput::IsCheckedExportOnlySelected) ) )
                 .OnCheckStateChanged( FOnCheckStateChanged::CreateUObject(
                     &InParam, &UHoudiniAssetInput::CheckStateChangedExportOnlySelected ) )
@@ -2326,8 +2315,8 @@ FHoudiniParameterDetails::CreateWidgetInput( IDetailCategoryBuilder & LocalDetai
                     .ToolTipText( LOCTEXT( "AutoSelectComponentCheckboxTooltip", "If enabled, when no Landscape components are curremtly selected, the one within the asset's bounding box will be exported." ) )
                     .Font( FEditorStyle::GetFontStyle( TEXT( "PropertyWindow.NormalFont") ) )
                 ]
-                .IsChecked( TAttribute< ECheckBoxState >::Create(
-                    TAttribute< ECheckBoxState >::FGetter::CreateUObject(
+                .IsChecked( TAttribute< ESlateCheckBoxState::Type >::Create(
+                    TAttribute< ESlateCheckBoxState::Type >::FGetter::CreateUObject(
                     &InParam, &UHoudiniAssetInput::IsCheckedAutoSelectLandscape ) ) )
                 .OnCheckStateChanged( FOnCheckStateChanged::CreateUObject(
                     &InParam, &UHoudiniAssetInput::CheckStateChangedAutoSelectLandscape) )
@@ -2352,8 +2341,8 @@ FHoudiniParameterDetails::CreateWidgetInput( IDetailCategoryBuilder & LocalDetai
                     .ToolTipText( LOCTEXT( "LandscapeMaterialsTooltip", "If enabled, the landscape materials will be exported with it." ) )
                     .Font( FEditorStyle::GetFontStyle( TEXT( "PropertyWindow.NormalFont" ) ) )
                 ]
-                .IsChecked( TAttribute< ECheckBoxState >::Create(
-                    TAttribute< ECheckBoxState >::FGetter::CreateUObject(
+                .IsChecked( TAttribute< ESlateCheckBoxState::Type >::Create(
+                    TAttribute< ESlateCheckBoxState::Type >::FGetter::CreateUObject(
                     &InParam, &UHoudiniAssetInput::IsCheckedExportMaterials ) ) )
                 .OnCheckStateChanged( FOnCheckStateChanged::CreateUObject(
                     &InParam, &UHoudiniAssetInput::CheckStateChangedExportMaterials ) )
@@ -2377,8 +2366,8 @@ FHoudiniParameterDetails::CreateWidgetInput( IDetailCategoryBuilder & LocalDetai
                     .ToolTipText( LOCTEXT( "LandscapeTileUVsTooltip", "If enabled, UVs will be exported separately for each Landscape tile." ) )
                     .Font( FEditorStyle::GetFontStyle( TEXT( "PropertyWindow.NormalFont" ) ) )
                 ]
-                .IsChecked(TAttribute< ECheckBoxState >::Create(
-                    TAttribute< ECheckBoxState >::FGetter::CreateUObject(
+                .IsChecked(TAttribute< ESlateCheckBoxState::Type >::Create(
+                    TAttribute< ESlateCheckBoxState::Type >::FGetter::CreateUObject(
                     &InParam, &UHoudiniAssetInput::IsCheckedExportTileUVs ) ) )
                 .OnCheckStateChanged( FOnCheckStateChanged::CreateUObject(
                     &InParam, &UHoudiniAssetInput::CheckStateChangedExportTileUVs ) )
@@ -2402,8 +2391,8 @@ FHoudiniParameterDetails::CreateWidgetInput( IDetailCategoryBuilder & LocalDetai
                     .ToolTipText( LOCTEXT( "LandscapeNormalizedUVsTooltip", "If enabled, landscape UVs will be exported in [0, 1]." ) )
                     .Font( FEditorStyle::GetFontStyle( TEXT( "PropertyWindow.NormalFont" ) ) )
                 ]
-                .IsChecked( TAttribute< ECheckBoxState >::Create(
-                    TAttribute< ECheckBoxState >::FGetter::CreateUObject(
+                .IsChecked( TAttribute< ESlateCheckBoxState::Type >::Create(
+                    TAttribute< ESlateCheckBoxState::Type >::FGetter::CreateUObject(
                         &InParam, &UHoudiniAssetInput::IsCheckedExportNormalizedUVs ) ) )
                 .OnCheckStateChanged(FOnCheckStateChanged::CreateUObject(
                     &InParam, &UHoudiniAssetInput::CheckStateChangedExportNormalizedUVs ) )
@@ -2427,8 +2416,8 @@ FHoudiniParameterDetails::CreateWidgetInput( IDetailCategoryBuilder & LocalDetai
                     .ToolTipText( LOCTEXT( "LandscapeLightingTooltip", "If enabled, lightmap information will be exported with the landscape." ) )
                     .Font(FEditorStyle::GetFontStyle( TEXT( "PropertyWindow.NormalFont" ) ) )
                 ]
-                .IsChecked( TAttribute< ECheckBoxState >::Create(
-                    TAttribute< ECheckBoxState >::FGetter::CreateUObject(
+                .IsChecked( TAttribute< ESlateCheckBoxState::Type >::Create(
+                    TAttribute< ESlateCheckBoxState::Type >::FGetter::CreateUObject(
                     &InParam, &UHoudiniAssetInput::IsCheckedExportLighting ) ) )
                 .OnCheckStateChanged( FOnCheckStateChanged::CreateUObject(
                     &InParam, &UHoudiniAssetInput::CheckStateChangedExportLighting ) )
@@ -2452,8 +2441,8 @@ FHoudiniParameterDetails::CreateWidgetInput( IDetailCategoryBuilder & LocalDetai
                     .ToolTipText( LOCTEXT( "LandscapeCurvesTooltip", "If enabled, Landscape curves will be exported." ) )
                     .Font( FEditorStyle::GetFontStyle( TEXT( "PropertyWindow.NormalFont" ) ) )
                 ]
-                .IsChecked( TAttribute< ECheckBoxState >::Create(
-                    TAttribute< ECheckBoxState >::FGetter::CreateUObject(
+                .IsChecked( TAttribute< ESlateCheckBoxState::Type >::Create(
+                    TAttribute< ESlateCheckBoxState::Type >::FGetter::CreateUObject(
                     &InParam, &UHoudiniAssetInput::IsCheckedExportCurves ) ) )
                 .OnCheckStateChanged( FOnCheckStateChanged::CreateUObject(
                     &InParam, &UHoudiniAssetInput::CheckStateChangedExportCurves ) )
@@ -2588,10 +2577,10 @@ void
 FHoudiniParameterDetails::CreateWidgetLabel( IDetailCategoryBuilder & LocalDetailCategoryBuilder, class UHoudiniAssetParameterLabel& InParam )
 {
     TSharedPtr< STextBlock > TextBlock;
-    FText ParameterLabelText = FText::FromString( InParam.GetParameterLabel() );
-    FText ParameterTooltip = GetParameterTooltip( &InParam );
+    FString ParameterLabelText = InParam.GetParameterLabel();
+	FString ParameterTooltip = GetParameterTooltip(&InParam);
 
-    LocalDetailCategoryBuilder.AddCustomRow( FText::GetEmpty() )
+    LocalDetailCategoryBuilder.AddCustomRow( TEXT("") )
     [
         SAssignNew( TextBlock, STextBlock )
         .Text( ParameterLabelText )
@@ -2608,7 +2597,7 @@ FHoudiniParameterDetails::CreateWidgetLabel( IDetailCategoryBuilder & LocalDetai
 void 
 FHoudiniParameterDetails::CreateWidgetString( IDetailCategoryBuilder & LocalDetailCategoryBuilder, class UHoudiniAssetParameterString& InParam )
 {
-    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( FText::GetEmpty() );
+    FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( TEXT("") );
 
     // Create the standard parameter name widget.
     CreateNameWidget( &InParam, Row, true );
@@ -2641,7 +2630,7 @@ FHoudiniParameterDetails::CreateWidgetSeparator( IDetailCategoryBuilder & LocalD
 {
     TSharedPtr< SSeparator > Separator;
 
-    LocalDetailCategoryBuilder.AddCustomRow( FText::GetEmpty() )
+    LocalDetailCategoryBuilder.AddCustomRow( TEXT("") )
     [
         SNew( SVerticalBox )
         +SVerticalBox::Slot()

@@ -95,8 +95,8 @@ class FHoudiniSplineComponentVisualizer : public FComponentVisualizer
             FPrimitiveDrawInterface * PDI ) override;
 
         /** Handle a click on a registered hit box. **/
-        virtual bool VisProxyHandleClick(
-            FEditorViewportClient* InViewportClient, HComponentVisProxy* VisProxy, const FViewportClick& Click ) override;
+		virtual bool VisProxyHandleClick(
+			FLevelEditorViewportClient* InViewportClient, HComponentVisProxy* VisProxy, const FViewportClick& Click) override;
 
         /** Handle modifier key presses and depresses such as Alt for key duplication. **/
         virtual bool HandleInputKey(

@@ -23,7 +23,8 @@
 
 #pragma once
 
-#include "CoreGlobals.h"
+#include "Core.h"
+//#include "CoreGlobals.h"
 #include "UnrealString.h"
 #include "Guid.h"
 
@@ -82,6 +83,8 @@ struct HOUDINIENGINERUNTIME_API FHoudiniCookParams
     /** Cache of the temp cook content packages created by the asset for its Landscape layers		    **/
     /** As packages are unique their are used as the key (we can have multiple package for the same geopartobj  **/
     TMap< TWeakObjectPtr<class UPackage>, FHoudiniGeoPartObject >* CookedTemporaryLandscapeLayers = nullptr;
+
+	int32 NumLODsToGenerate = 0;
 
     // When cooking in temp mode - folder to create assets in
     FText TempCookFolder;

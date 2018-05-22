@@ -23,6 +23,7 @@
 
 #include "HoudiniApi.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "HoudiniInstancedActorComponent.h"
 #include "HoudiniMeshSplitInstancerComponent.h"
 #include "HoudiniEngineRuntimePrivatePCH.h"
@@ -33,17 +34,17 @@
 #include "Internationalization.h"
 #define LOCTEXT_NAMESPACE HOUDINI_LOCTEXT_NAMESPACE 
 
-UHoudiniInstancedActorComponent::UHoudiniInstancedActorComponent( const FObjectInitializer& ObjectInitializer )
-: Super( ObjectInitializer )
+UHoudiniInstancedActorComponent::UHoudiniInstancedActorComponent(const class FPostConstructInitializeProperties& PCIP)
+	: Super(PCIP)
 , InstancedAsset( nullptr )
 {
 }
 
 
-void UHoudiniInstancedActorComponent::OnComponentDestroyed( bool bDestroyingHierarchy )
+void UHoudiniInstancedActorComponent::OnComponentDestroyed()
 {
     ClearInstances();
-    Super::OnComponentDestroyed( bDestroyingHierarchy );
+    Super::OnComponentDestroyed();
 }
 
 void
@@ -91,16 +92,16 @@ UHoudiniInstancedActorComponent::SetInstances( const TArray<FTransform>& Instanc
 #endif
 }
 
-int32 
-UHoudiniInstancedActorComponent::AddInstance( const FTransform& InstanceTransform )
+int32
+UHoudiniInstancedActorComponent::AddInstance(const FTransform& InstanceTransform)
 {
-    if ( AActor * NewActor = SpawnInstancedActor( InstanceTransform ) )
-    {
-        NewActor->AttachToComponent( this, FAttachmentTransformRules::KeepRelativeTransform );
-        NewActor->SetActorRelativeTransform( InstanceTransform );
-        return Instances.Add( NewActor );
-    }
-    return -1;
+	if (AActor * NewActor = SpawnInstancedActor(InstanceTransform))
+	{
+		NewActor->AttachRootComponentTo(this, NAME_None, EAttachLocation::KeepRelativeOffset);
+		NewActor->SetActorRelativeTransform(InstanceTransform);
+		return Instances.Add(NewActor);
+	}
+	return -1;
 }
 
 AActor*
@@ -109,7 +110,7 @@ UHoudiniInstancedActorComponent::SpawnInstancedActor( const FTransform& Instance
 #if WITH_EDITOR
     GEditor->ClickLocation = InstancedTransform.GetTranslation();
     GEditor->ClickPlane = FPlane( GEditor->ClickLocation, FVector::UpVector );
-    TArray<AActor*> NewActors = FLevelEditorViewportClient::TryPlacingActorFromObject( GetOwner()->GetLevel(), InstancedAsset, false, RF_Transactional, nullptr );
+    TArray<AActor*> NewActors = FLevelEditorUtils::TryPlacingActorFromObject( GetOwner()->GetLevel(), InstancedAsset, false, RF_Transactional, nullptr );
     if ( NewActors.Num() > 0 )
         return NewActors[ 0 ];
 #endif
@@ -155,7 +156,7 @@ void UHoudiniInstancedActorComponent::UpdateInstancerComponentInstances(
     const TArray< FTransform > & InstancedTransforms, const TArray<FLinearColor> & InstancedColors,
     const FRotator & RotationOffset, const FVector & ScaleOffset)
 {
-    UInstancedStaticMeshComponent* ISMC = Cast<UInstancedStaticMeshComponent>( Component );
+	UInstancedStaticMeshComponent* ISMC = Cast<UInstancedStaticMeshComponent>( Component );
     UHoudiniInstancedActorComponent* IAC = Cast<UHoudiniInstancedActorComponent>( Component );
     UHoudiniMeshSplitInstancerComponent* MSIC = Cast<UHoudiniMeshSplitInstancerComponent>( Component );
 

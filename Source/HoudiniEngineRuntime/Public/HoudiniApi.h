@@ -27,6 +27,25 @@
 #include "HAPI.h"
 #include "HAL/PlatformProcess.h"
 
+#include "Core.h"
+#include "CoreUObject.h"
+#include "UObject/Class.h"
+#include "UObject/CoreObject.h"
+#include "UObject/CoreNet.h"
+#include "Object.h"
+#include "Math/NumericLimits.h"
+
+#include "PhysicsEngine/BodyInstance.h"
+#include "Engine.h"
+#include "SlateCore.h"
+#include "Slate.h"
+#include "SlateApplication.h"
+
+//JC: Stupid windows api issue
+#ifdef GetGeoInfo
+	#undef GetGeoInfo
+#endif
+
 
 struct HOUDINIENGINERUNTIME_API FHoudiniApi
 {

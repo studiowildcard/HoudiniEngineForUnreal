@@ -62,5 +62,5 @@ class UHoudiniAssetFactory : public UFactory, public FReimportHandler
         virtual void SetReimportPaths( UObject * Obj, const TArray< FString > & NewReimportPaths ) override;
         virtual EReimportResult::Type Reimport( UObject * Obj ) override;
 
-        virtual UObject* FactoryCreateFile(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, const FString& Filename, const TCHAR* Parms, FFeedbackContext* Warn, bool& bOutOperationCanceled) override;
+        //virtual UObject* FactoryCreateFile(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, const FString& Filename, const TCHAR* Parms, FFeedbackContext* Warn, bool& bOutOperationCanceled) override;
 };

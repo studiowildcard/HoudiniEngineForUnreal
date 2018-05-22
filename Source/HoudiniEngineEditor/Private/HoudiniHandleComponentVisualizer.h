@@ -81,7 +81,7 @@ class FHoudiniHandleComponentVisualizer : public FComponentVisualizer
 
         /** Handle a click on a registered hit box. **/
         virtual bool VisProxyHandleClick(
-            FEditorViewportClient* InViewportClient, HComponentVisProxy* VisProxy, const FViewportClick& Click ) override;
+            FLevelEditorViewportClient* InViewportClient, HComponentVisProxy* VisProxy, const FViewportClick& Click ) override;
 
         /** Called when editing is no longer being performed. **/
         virtual void EndEditing() override;

@@ -34,13 +34,13 @@
 #include "HoudiniEngineEditorPrivatePCH.h"
 #include "HoudiniAsset.h"
 #include "EditorFramework/AssetImportData.h"
-#include "Misc/FileHelper.h"
+//#include "Misc/FileHelper.h"
 
 #include "Internationalization.h"
 #define LOCTEXT_NAMESPACE HOUDINI_LOCTEXT_NAMESPACE 
 
-UHoudiniAssetFactory::UHoudiniAssetFactory( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetFactory::UHoudiniAssetFactory( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
 {
     // This factory is responsible for manufacturing HoudiniEngine assets.
     SupportedClass = UHoudiniAsset::StaticClass();
@@ -89,9 +89,10 @@ UHoudiniAssetFactory::FactoryCreateBinary(
     FEditorDelegates::OnAssetPreImport.Broadcast( this, InClass, InParent, InName, Type );
 
     // Create a new asset.
-    UHoudiniAsset * HoudiniAsset = NewObject< UHoudiniAsset >( InParent, InName, Flags );
+	UHoudiniAsset * HoudiniAsset = ConstructObject< UHoudiniAsset >( UHoudiniAsset::StaticClass(), InParent, InName, Flags );
     HoudiniAsset->CreateAsset( Buffer, BufferEnd, UFactory::GetCurrentFilename() );
 
+#if WITH_EDITORONLY_DATA
     // Create reimport information.
     UAssetImportData * AssetImportData = HoudiniAsset->AssetImportData;
     if ( !AssetImportData )
@@ -100,7 +101,11 @@ UHoudiniAssetFactory::FactoryCreateBinary(
         HoudiniAsset->AssetImportData = AssetImportData;
     }
 
-    AssetImportData->Update( UFactory::GetCurrentFilename() );
+	AssetImportData->SourceFilePath = FReimportManager::SanitizeImportFilename(UFactory::GetCurrentFilename(), HoudiniAsset);
+	AssetImportData->SourceFileTimestamp = IFileManager::Get().GetTimeStamp(*UFactory::GetCurrentFilename()).ToString();
+	AssetImportData->bDirty = false;
+
+#endif
 
     // Broadcast notification that the new asset has been imported.
     FEditorDelegates::OnAssetPostImport.Broadcast( this, HoudiniAsset );
@@ -111,17 +116,19 @@ UHoudiniAssetFactory::FactoryCreateBinary(
 bool
 UHoudiniAssetFactory::CanReimport( UObject * Obj, TArray< FString > & OutFilenames )
 {
+#if WITH_EDITORONLY_DATA
     UHoudiniAsset * HoudiniAsset = Cast< UHoudiniAsset >( Obj );
     if ( HoudiniAsset )
     {
         UAssetImportData * AssetImportData = HoudiniAsset->AssetImportData;
         if ( AssetImportData )
-            OutFilenames.Add( AssetImportData->GetFirstFilename() );
+			OutFilenames.Add(AssetImportData->SourceFilePath); //OutFilenames.Add( AssetImportData->GetFirstFilename() );
         else
             OutFilenames.Add( TEXT( "" ) );
 
         return true;
     }
+#endif
 
     return false;
 }
@@ -129,19 +136,22 @@ UHoudiniAssetFactory::CanReimport( UObject * Obj, TArray< FString > & OutFilenam
 void
 UHoudiniAssetFactory::SetReimportPaths( UObject * Obj, const TArray< FString > & NewReimportPaths )
 {
+#if WITH_EDITORONLY_DATA
     UHoudiniAsset * HoudiniAsset = Cast< UHoudiniAsset >( Obj );
     if ( HoudiniAsset && ( 1 == NewReimportPaths.Num() ) )
-        HoudiniAsset->AssetImportData->UpdateFilenameOnly( NewReimportPaths[ 0 ] );
+		HoudiniAsset->AssetImportData->SourceFilePath = NewReimportPaths[0];
+#endif
 }
 
 EReimportResult::Type
 UHoudiniAssetFactory::Reimport( UObject * Obj )
 {
+#if WITH_EDITORONLY_DATA
     UHoudiniAsset * HoudiniAsset = Cast< UHoudiniAsset >( Obj );
     if ( HoudiniAsset && HoudiniAsset->AssetImportData )
     {
         // Make sure file is valid and exists.
-        const FString & Filename = HoudiniAsset->AssetImportData->GetFirstFilename();
+		const FString & Filename = HoudiniAsset->AssetImportData->SourceFilePath;
 
         if ( !Filename.Len() || IFileManager::Get().FileSize( *Filename ) == INDEX_NONE )
             return EReimportResult::Failed;
@@ -160,6 +170,7 @@ UHoudiniAssetFactory::Reimport( UObject * Obj )
             return EReimportResult::Succeeded;
         }
     }
+#endif
 
     HOUDINI_LOG_MESSAGE( TEXT( "Houdini Asset reimport has failed." ) );
     return EReimportResult::Failed;
@@ -167,6 +178,8 @@ UHoudiniAssetFactory::Reimport( UObject * Obj )
 
 
 
+/*
+//JC: How important is this function? the parent interface doesn't have it in this version of UE4
 UObject*
 UHoudiniAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, const FString& Filename, const TCHAR* Parms, FFeedbackContext* Warn, bool& bOutOperationCanceled)
 {
@@ -211,5 +224,7 @@ UHoudiniAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InParent, FNam
 
     return FactoryCreateBinary( InClass, InParent, NewIname, Flags, nullptr, *NewFileExtension, Ptr, Ptr + Data.Num() - 1, Warn );
 }
+*/
+
 
 #undef LOCTEXT_NAMESPACE

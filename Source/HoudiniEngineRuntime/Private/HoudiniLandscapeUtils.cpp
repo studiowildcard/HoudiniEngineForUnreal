@@ -41,12 +41,23 @@
 #include "HoudiniAssetActor.h"
 #include "HoudiniAssetComponent.h"
 
-#include "LandscapeInfo.h"
-#include "LandscapeComponent.h"
-#include "LandscapeEdit.h"
-#include "LandscapeLayerInfoObject.h"
+#include "Landscape/Landscape.h"
+#include "Landscape/LandscapeInfo.h"
+#include "Landscape/LandscapeComponent.h"
+#include "Landscape/LandscapeEdit.h"
+#include "Landscape/LandscapeLayerInfoObject.h"
+#include "Landscape/LandscapeMeshCollisionComponent.h"
+#include "Landscape/LandscapeMaterialInstanceConstant.h"
+#include "Landscape/LandscapeSplinesComponent.h"
+
+//#include "LandscapeInfo.h"
+//#include "LandscapeComponent.h"
+//#include "LandscapeEdit.h"
+//#include "LandscapeLayerInfoObject.h"
+//#include "Runtime/Engine/Classes/Landscape/Landscape.h"
+
 #include "LightMap.h"
-#include "Engine/MapBuildDataRegistry.h"
+//#include "Engine/MapBuildDataRegistry.h"
 #if WITH_EDITOR
     #include "FileHelpers.h"
     #include "EngineUtils.h"
@@ -613,7 +624,7 @@ FHoudiniLandscapeUtils::GetNonWeightBlendedLayerNames( const FHoudiniGeoPartObje
             HEngineString.ToFString( CurrentString );
 
             TArray<FString> Tokens;
-            CurrentString.ParseIntoArray( Tokens, TEXT(" "), true );
+            CurrentString.ParseIntoArray( &Tokens, TEXT(" "), true );
 
             for( int32 n = 0; n < Tokens.Num(); n++ )
                 NonWeightBlendedLayerNames.Add( Tokens[ n ] );
@@ -1971,11 +1982,21 @@ FHoudiniLandscapeUtils::ExtractLandscapeData(
     TArray<const char *>& LandscapeComponentNameArray,	    
     TArray<FLinearColor>& LandscapeLightmapValues )
 {
+#if !WITH_EDITORONLY_DATA
+	return false;
+#else
+
     if ( !LandscapeProxy )
         return false;
 
     if ( SelectedComponents.Num() < 1 )
         return false;
+
+	// helper function in UE4.18 but not in 4.5
+	auto componentMax = [](const FIntPoint& A, const FIntPoint& B) -> FIntPoint
+	{
+		return FIntPoint(FMath::Max(A.X, B.X), FMath::Max(A.Y, B.Y));
+	};
 
     // Get runtime settings.
     const UHoudiniRuntimeSettings * HoudiniRuntimeSettings = GetDefault< UHoudiniRuntimeSettings >();
@@ -1991,6 +2012,7 @@ FHoudiniLandscapeUtils::ExtractLandscapeData(
 
     // Calc all the needed sizes
     int32 ComponentSizeQuads = ( ( LandscapeProxy->ComponentSizeQuads + 1 ) >> LandscapeProxy->ExportLOD ) - 1;
+
     float ScaleFactor = (float)LandscapeProxy->ComponentSizeQuads / (float)ComponentSizeQuads;
 
     int32 NumComponents = SelectedComponents.Num();
@@ -2029,8 +2051,7 @@ FHoudiniLandscapeUtils::ExtractLandscapeData(
         // See if we need to export lighting information.
         if ( bExportLighting )
         {
-            const FMeshMapBuildData* MapBuildData = LandscapeComponent->GetMeshMapBuildData();
-            FLightMap2D* LightMap2D = MapBuildData && MapBuildData->LightMap ? MapBuildData->LightMap->GetLightMap2D() : nullptr;
+			FLightMap2D* LightMap2D = LandscapeComponent->LightMap ? LandscapeComponent->LightMap->GetLightMap2D() : nullptr;
             if ( LightMap2D && LightMap2D->IsValid( 0 ) )
             {
                 UTexture2D * TextureLightmap = LightMap2D->GetTexture( 0 );
@@ -2088,7 +2109,7 @@ FHoudiniLandscapeUtils::ExtractLandscapeData(
                 TextureUV = FVector( VertX * ScaleFactor + IntPoint.X, VertY * ScaleFactor + IntPoint.Y, 0.0f );
 
                 // Keep track of max offset.
-                IntPointMax = IntPointMax.ComponentMax( IntPoint );
+				IntPointMax = componentMax(IntPointMax, IntPoint);
             }
 
             if ( bExportLighting )
@@ -2167,7 +2188,7 @@ FHoudiniLandscapeUtils::ExtractLandscapeData(
     if ( !bExportTileUVs && bExportNormalizedUVs )
     {
         IntPointMax += FIntPoint( ComponentSizeQuads, ComponentSizeQuads );
-        IntPointMax = IntPointMax.ComponentMax( FIntPoint( 1, 1 ) );
+		IntPointMax = componentMax(IntPointMax, FIntPoint(1, 1));
 
         for ( int32 UVIdx = 0; UVIdx < VertexCount; ++UVIdx )
         {
@@ -2178,8 +2199,9 @@ FHoudiniLandscapeUtils::ExtractLandscapeData(
     }
 
     return true;
+#endif // end if !WITH_EDITORONLY_DATA
 }
-#endif
+#endif // end if WITH_EDITOR
 
 bool FHoudiniLandscapeUtils::AddLandscapePositionAttribute( const HAPI_NodeId& NodeId, const TArray< FVector >& LandscapePositionArray )
 {
@@ -2460,63 +2482,64 @@ bool FHoudiniLandscapeUtils::AddLandscapeMeshIndicesAndMaterialsAttribute(
         FHoudiniEngine::Get().GetSession(), NodeId,
         0, LandscapeFaces.GetData(), 0, LandscapeFaces.Num() ), false );
 
-    // Get name of attribute used for marshalling materials.
-    std::string MarshallingAttributeMaterialName = HAPI_UNREAL_ATTRIB_MATERIAL;
-    if ( HoudiniRuntimeSettings && !HoudiniRuntimeSettings->MarshallingAttributeMaterial.IsEmpty() )
-    {
-        FHoudiniEngineUtils::ConvertUnrealString(
-            HoudiniRuntimeSettings->MarshallingAttributeMaterial,
-            MarshallingAttributeMaterialName );
-    }
+	//JC: For some reason, passing in material names causes a crash inside a Houdini function... not sure what causes it or if passing in material names is important
+ //   // Get name of attribute used for marshalling materials.
+ //   std::string MarshallingAttributeMaterialName = HAPI_UNREAL_ATTRIB_MATERIAL;
+ //   if ( HoudiniRuntimeSettings && !HoudiniRuntimeSettings->MarshallingAttributeMaterial.IsEmpty() )
+ //   {
+ //       FHoudiniEngineUtils::ConvertUnrealString(
+ //           HoudiniRuntimeSettings->MarshallingAttributeMaterial,
+ //           MarshallingAttributeMaterialName );
+ //   }
 
-    // Get name of attribute used for marshalling hole materials.
-    std::string MarshallingAttributeMaterialHoleName = HAPI_UNREAL_ATTRIB_MATERIAL_HOLE;
-    if ( HoudiniRuntimeSettings && !HoudiniRuntimeSettings->MarshallingAttributeMaterialHole.IsEmpty() )
-    {
-        FHoudiniEngineUtils::ConvertUnrealString(
-            HoudiniRuntimeSettings->MarshallingAttributeMaterialHole,
-            MarshallingAttributeMaterialHoleName );
-    }
+ //   // Get name of attribute used for marshalling hole materials.
+ //   std::string MarshallingAttributeMaterialHoleName = HAPI_UNREAL_ATTRIB_MATERIAL_HOLE;
+ //   if ( HoudiniRuntimeSettings && !HoudiniRuntimeSettings->MarshallingAttributeMaterialHole.IsEmpty() )
+ //   {
+ //       FHoudiniEngineUtils::ConvertUnrealString(
+ //           HoudiniRuntimeSettings->MarshallingAttributeMaterialHole,
+ //           MarshallingAttributeMaterialHoleName );
+ //   }
 
-    // Marshall in override primitive material names.
-    HAPI_AttributeInfo AttributeInfoPrimitiveMaterial;
-    FMemory::Memzero< HAPI_AttributeInfo >( AttributeInfoPrimitiveMaterial );
-    AttributeInfoPrimitiveMaterial.count = FaceMaterials.Num();
-    AttributeInfoPrimitiveMaterial.tupleSize = 1;
-    AttributeInfoPrimitiveMaterial.exists = true;
-    AttributeInfoPrimitiveMaterial.owner = HAPI_ATTROWNER_PRIM;
-    AttributeInfoPrimitiveMaterial.storage = HAPI_STORAGETYPE_STRING;
-    AttributeInfoPrimitiveMaterial.originalOwner = HAPI_ATTROWNER_INVALID;
+ //   // Marshall in override primitive material names.
+ //   HAPI_AttributeInfo AttributeInfoPrimitiveMaterial;
+ //   FMemory::Memzero< HAPI_AttributeInfo >( AttributeInfoPrimitiveMaterial );
+ //   AttributeInfoPrimitiveMaterial.count = FaceMaterials.Num();
+ //   AttributeInfoPrimitiveMaterial.tupleSize = 1;
+ //   AttributeInfoPrimitiveMaterial.exists = true;
+ //   AttributeInfoPrimitiveMaterial.owner = HAPI_ATTROWNER_PRIM;
+ //   AttributeInfoPrimitiveMaterial.storage = HAPI_STORAGETYPE_STRING;
+ //   AttributeInfoPrimitiveMaterial.originalOwner = HAPI_ATTROWNER_INVALID;
 
-    HOUDINI_CHECK_ERROR_RETURN( FHoudiniApi::AddAttribute(
-        FHoudiniEngine::Get().GetSession(), NodeId, 0,
-        MarshallingAttributeMaterialName.c_str(), &AttributeInfoPrimitiveMaterial ), false );
+ //   HOUDINI_CHECK_ERROR_RETURN( FHoudiniApi::AddAttribute(
+ //       FHoudiniEngine::Get().GetSession(), NodeId, 0,
+ //       MarshallingAttributeMaterialName.c_str(), &AttributeInfoPrimitiveMaterial ), false );
 
-    HOUDINI_CHECK_ERROR_RETURN( FHoudiniApi::SetAttributeStringData(
-        FHoudiniEngine::Get().GetSession(), NodeId, 0,
-        MarshallingAttributeMaterialName.c_str(), &AttributeInfoPrimitiveMaterial,
-        (const char **)FaceMaterials.GetData(), 0, AttributeInfoPrimitiveMaterial.count ), false );
+	//HOUDINI_CHECK_ERROR_RETURN(FHoudiniApi::SetAttributeStringData(
+	//	FHoudiniEngine::Get().GetSession(), NodeId, 0,
+	//	MarshallingAttributeMaterialName.c_str(), &AttributeInfoPrimitiveMaterial,
+	//	FaceMaterials.GetData(), 0, AttributeInfoPrimitiveMaterial.count), false);
 
-    // Marshall in override primitive material hole names.
-    HAPI_AttributeInfo AttributeInfoPrimitiveMaterialHole;
-    FMemory::Memzero< HAPI_AttributeInfo >( AttributeInfoPrimitiveMaterialHole );
-    AttributeInfoPrimitiveMaterialHole.count = FaceHoleMaterials.Num();
-    AttributeInfoPrimitiveMaterialHole.tupleSize = 1;
-    AttributeInfoPrimitiveMaterialHole.exists = true;
-    AttributeInfoPrimitiveMaterialHole.owner = HAPI_ATTROWNER_PRIM;
-    AttributeInfoPrimitiveMaterialHole.storage = HAPI_STORAGETYPE_STRING;
-    AttributeInfoPrimitiveMaterialHole.originalOwner = HAPI_ATTROWNER_INVALID;
+ //   // Marshall in override primitive material hole names.
+ //   HAPI_AttributeInfo AttributeInfoPrimitiveMaterialHole;
+ //   FMemory::Memzero< HAPI_AttributeInfo >( AttributeInfoPrimitiveMaterialHole );
+ //   AttributeInfoPrimitiveMaterialHole.count = FaceHoleMaterials.Num();
+ //   AttributeInfoPrimitiveMaterialHole.tupleSize = 1;
+ //   AttributeInfoPrimitiveMaterialHole.exists = true;
+ //   AttributeInfoPrimitiveMaterialHole.owner = HAPI_ATTROWNER_PRIM;
+ //   AttributeInfoPrimitiveMaterialHole.storage = HAPI_STORAGETYPE_STRING;
+ //   AttributeInfoPrimitiveMaterialHole.originalOwner = HAPI_ATTROWNER_INVALID;
 
-    HOUDINI_CHECK_ERROR_RETURN( FHoudiniApi::AddAttribute(
-        FHoudiniEngine::Get().GetSession(),
-        NodeId, 0, MarshallingAttributeMaterialHoleName.c_str(),
-        &AttributeInfoPrimitiveMaterialHole ), false );
+ //   HOUDINI_CHECK_ERROR_RETURN( FHoudiniApi::AddAttribute(
+ //       FHoudiniEngine::Get().GetSession(),
+ //       NodeId, 0, MarshallingAttributeMaterialHoleName.c_str(),
+ //       &AttributeInfoPrimitiveMaterialHole ), false );
 
-    HOUDINI_CHECK_ERROR_RETURN( FHoudiniApi::SetAttributeStringData(
-        FHoudiniEngine::Get().GetSession(),
-        NodeId, 0, MarshallingAttributeMaterialHoleName.c_str(),
-        &AttributeInfoPrimitiveMaterialHole, (const char **) FaceHoleMaterials.GetData(), 0,
-        AttributeInfoPrimitiveMaterialHole.count ), false );
+ //   HOUDINI_CHECK_ERROR_RETURN( FHoudiniApi::SetAttributeStringData(
+ //       FHoudiniEngine::Get().GetSession(),
+ //       NodeId, 0, MarshallingAttributeMaterialHoleName.c_str(),
+ //       &AttributeInfoPrimitiveMaterialHole, (const char **) FaceHoleMaterials.GetData(), 0,
+ //       AttributeInfoPrimitiveMaterialHole.count ), false );
 
     return true;
 }
@@ -2525,6 +2548,7 @@ bool FHoudiniLandscapeUtils::AddLandscapeMeshIndicesAndMaterialsAttribute(
 bool
 FHoudiniLandscapeUtils::CreateAllLandscapes( 
     FHoudiniCookParams& HoudiniCookParams,
+	const TArray<ALandscape*>& LandscapesToUpdate,
     const TArray< FHoudiniGeoPartObject > & FoundVolumes, 
     TMap< FHoudiniGeoPartObject, ALandscape * >& Landscapes,
     TMap< FHoudiniGeoPartObject, ALandscape * >& NewLandscapes,
@@ -2551,10 +2575,10 @@ FHoudiniLandscapeUtils::CreateAllLandscapes(
     // Try to create a Landscape for each HeightData found
     //TMap< FHoudiniGeoPartObject, ALandscape * > NewLandscapes;
     NewLandscapes.Empty();
-    for ( TArray< const FHoudiniGeoPartObject* >::TConstIterator IterHeighfields( FoundHeightfields ); IterHeighfields; ++IterHeighfields )
+	for (int32 HeightfieldIdx = 0; HeightfieldIdx < FoundHeightfields.Num(); HeightfieldIdx++)
     {
         // Get the current Heightfield GeoPartObject
-        const FHoudiniGeoPartObject* CurrentHeightfield = *IterHeighfields;
+		const FHoudiniGeoPartObject* CurrentHeightfield = FoundHeightfields[HeightfieldIdx];
         if ( !CurrentHeightfield )
             continue;
 
@@ -2562,7 +2586,11 @@ FHoudiniLandscapeUtils::CreateAllLandscapes(
         if ( !CurrentHeightfield->bHasGeoChanged )
         {
             // The Geo has not changed, do we need to recreate the landscape?
-            ALandscape * FoundLandscape = Landscapes.FindChecked( *CurrentHeightfield );
+			//ALandscape * FoundLandscape = Landscapes.FindChecked( *CurrentHeightfield );
+			ALandscape* FoundLandscape = nullptr;
+			if (Landscapes.Contains(*CurrentHeightfield))
+				FoundLandscape = Landscapes.FindChecked(*CurrentHeightfield);
+
             if ( FoundLandscape )
             {
                 // Check that all layers/mask have not changed too
@@ -2593,6 +2621,18 @@ FHoudiniLandscapeUtils::CreateAllLandscapes(
 
         if ( !bLandscapeNeedsRecreate )
             continue;
+
+		// Do we have a landscape to update the data for instead of creating a new one?
+		ALandscape* ExistingLandscape = nullptr;
+		if (HeightfieldIdx < LandscapesToUpdate.Num())
+		{
+			ExistingLandscape = LandscapesToUpdate[HeightfieldIdx];
+			HOUDINI_LOG_WARNING(TEXT("Found existing landscape"));
+		}
+		else
+		{
+			HOUDINI_LOG_WARNING(TEXT("Failed to get existing landscape (current index %i, found %i)"), HeightfieldIdx, LandscapesToUpdate.Num());
+		}
 
         HAPI_NodeId HeightFieldNodeId = CurrentHeightfield->HapiGeoGetNodeId();
 
@@ -2637,12 +2677,32 @@ FHoudiniLandscapeUtils::CreateAllLandscapes(
             XSize, YSize, ImportLayerInfos ) )
             continue;
 
-        // Create the actual Landscape
-        ALandscape * CurrentLandscape = CreateLandscape( 
-            IntHeightData, ImportLayerInfos,
-            LandscapeTransform, XSize, YSize,
-            NumSectionPerLandscapeComponent, NumQuadsPerLandscapeSection,
-            LandscapeMaterial, LandscapeHoleMaterial );
+		ALandscape* CurrentLandscape = nullptr;
+
+		if (ExistingLandscape != nullptr && ExistingLandscape->IsValidLowLevel())
+		{
+			HOUDINI_LOG_MESSAGE(TEXT("Updating landscape in-place"));
+
+			// Update the existing landscape in-place
+			if (UpdateLandscape(
+				ExistingLandscape,
+				IntHeightData, ImportLayerInfos,
+				XSize, YSize,
+				NumSectionPerLandscapeComponent, NumQuadsPerLandscapeSection))
+			{
+				CurrentLandscape = ExistingLandscape;
+			}
+		}
+		else
+		{
+			// Create the actual Landscape
+			CurrentLandscape = CreateLandscape(
+				IntHeightData, ImportLayerInfos,
+				LandscapeTransform,
+				XSize, YSize,
+				NumSectionPerLandscapeComponent, NumQuadsPerLandscapeSection,
+				LandscapeMaterial, LandscapeHoleMaterial);
+		}
 
         if ( !CurrentLandscape )
             continue;
@@ -2711,16 +2771,15 @@ FHoudiniLandscapeUtils::CreateLandscape(
     if ( LandscapeHoleMaterial )
         Landscape->LandscapeHoleMaterial = LandscapeHoleMaterial;
 
-    // Setting the layer type here.
-    ELandscapeImportAlphamapType ImportLayerType = ELandscapeImportAlphamapType::Additive;
-
     // Import the data
-    Landscape->Import(
+	const int32 ComponentSizeQuads = NumSectionPerLandscapeComponent * NumQuadsPerLandscapeSection;
+	Landscape->Import(
         currentGUID,
-        0, 0, XSize - 1, YSize - 1,
+		XSize, YSize,
+		ComponentSizeQuads,
         NumSectionPerLandscapeComponent, NumQuadsPerLandscapeSection,
         &( IntHeightData[ 0 ] ), NULL,
-        ImportLayerInfos, ImportLayerType );
+		ImportLayerInfos);
 
     // Copied straight from UE source code to avoid crash after importing the landscape:
     // automatically calculate a lighting LOD that won't crash lightmass (hopefully)
@@ -2731,6 +2790,93 @@ FHoudiniLandscapeUtils::CreateLandscape(
     Landscape->RegisterAllComponents();
 
     return Landscape;
+}
+
+bool FHoudiniLandscapeUtils::UpdateLandscape(
+	ALandscape* ExistingLandscape,
+	const TArray< uint16 >& IntHeightData,
+	const TArray< FLandscapeImportLayerInfo >& ImportLayerInfos,
+	int32 XSize, int32 YSize,
+	int32 NumSectionPerLandscapeComponent, int32 NumQuadsPerLandscapeSection)
+{
+	if (ExistingLandscape == NULL || !ExistingLandscape->IsValidLowLevel())
+	{
+		FHoudiniEngineUtils::ShowEditorNotification(TEXT("Failed updating landscape: No landscape to update"), false);
+		return false;
+	}
+
+	//const FTransform LandscapeTransform = ExistingLandscape->GetTransform();
+	const int32 ExistingComponentSizeQuads = ExistingLandscape->ComponentSizeQuads;
+	UMaterialInterface* LandscapeMaterial = ExistingLandscape->LandscapeMaterial;
+	UMaterialInterface* LandscapeHoleMaterial = ExistingLandscape->LandscapeHoleMaterial;
+	const FGuid currentGUID = ExistingLandscape->GetLandscapeGuid();
+
+	if ((XSize < 2) || (YSize < 2))
+	{
+		FHoudiniEngineUtils::ShowEditorNotification(TEXT("Failed updating landscape: Size too small"), false);
+		return false;
+	}
+
+	if (IntHeightData.Num() != (XSize * YSize))
+	{
+		FHoudiniEngineUtils::ShowEditorNotification(TEXT("Failed updating landscape: Input and output data sizes are different"), false);
+		return false;
+	}
+
+	if (!GEditor)
+		return false;
+
+	UWorld* MyWorld = ExistingLandscape->GetWorld();
+
+	if (!MyWorld)
+		return false;
+
+	// Import the landscape data
+
+	// Deactivate CastStaticShadow on the landscape to avoid "grid shadow" issue
+	if (ExistingLandscape->bCastStaticShadow)
+		ExistingLandscape->bCastStaticShadow = false;
+
+	// Clear out old landscape
+	for (ULandscapeComponent* comp : ExistingLandscape->LandscapeComponents)
+	{
+		comp->DetachFromParent();
+		comp->ConditionalBeginDestroy();
+	}
+	ExistingLandscape->LandscapeComponents.Empty();
+
+	const int32 NewComponentSizeQuads = NumSectionPerLandscapeComponent * NumQuadsPerLandscapeSection;
+
+	if (ExistingLandscape->ComponentSizeQuads != NewComponentSizeQuads)
+	{
+		FHoudiniEngineUtils::ShowEditorNotification(TEXT("Failed updating landscape: ComponentSizeQuads value differs between input and output"), false);
+		return false;
+	}
+
+	// Import the new one
+	ExistingLandscape->Import(
+		currentGUID,
+		XSize, YSize,
+		NewComponentSizeQuads,
+		NumSectionPerLandscapeComponent, NumQuadsPerLandscapeSection,
+		&(IntHeightData[0]), NULL,
+		ImportLayerInfos);
+
+	//JC: Why don't the materials stick around?
+	//ExistingLandscape->LandscapeMaterial = LandscapeMaterial;
+	//ExistingLandscape->LandscapeHoleMaterial = LandscapeHoleMaterial;
+
+	// Copied straight from UE source code to avoid crash after importing the landscape:
+	// automatically calculate a lighting LOD that won't crash lightmass (hopefully)
+	// < 2048x2048 -> LOD0,  >=2048x2048 -> LOD1,  >= 4096x4096 -> LOD2,  >= 8192x8192 -> LOD3
+	ExistingLandscape->StaticLightingLOD = FMath::DivideAndRoundUp(FMath::CeilLogTwo((XSize * YSize) / (2048 * 2048) + 1), (uint32)2);
+
+	// Register all the landscape components
+	ExistingLandscape->RegisterAllComponents();
+
+	ExistingLandscape->GetWorld()->ForceGarbageCollection(true);
+
+	return true;
 }
 
 void FHoudiniLandscapeUtils::GetHeightFieldLandscapeMaterials(
@@ -2853,7 +2999,7 @@ bool FHoudiniLandscapeUtils::CreateLandscapeLayers(
     TArray<UPackage*> CreatedLandscapeLayerPackage;
 
     // Try to create all the layers
-    ELandscapeImportAlphamapType ImportLayerType = ELandscapeImportAlphamapType::Additive;
+    //ELandscapeImportAlphamapType ImportLayerType = ELandscapeImportAlphamapType::Additive;
     for ( TArray<const FHoudiniGeoPartObject *>::TConstIterator IterLayers( FoundLayers ); IterLayers; ++IterLayers )
     {
         const FHoudiniGeoPartObject * LayerGeoPartObject = *IterLayers;
@@ -2882,6 +3028,20 @@ bool FHoudiniLandscapeUtils::CreateLandscapeLayers(
         FString LayerString;
         FHoudiniEngineString( LayerVolumeInfo.nameSH ).ToFString( LayerString );
         ObjectTools::SanitizeObjectName( LayerString );
+
+		//JC: Hack to get rid of dots in layer names that Houdini adds for vector layers (they get split into layer.x, layer.y, layer.z)
+		if (LayerString.Contains(TEXT(".")))
+		{
+			FString newString;
+			for (TCHAR ch : LayerString)
+			{
+				if (ch == static_cast<TCHAR>('.'))
+					newString.AppendChar(static_cast<TCHAR>('_'));
+				else
+					newString.AppendChar(ch);
+			}
+			LayerString = newString;
+		}
 
         FName LayerName( *LayerString );
         FLandscapeImportLayerInfo currentLayerInfo( LayerName );
@@ -2961,7 +3121,8 @@ FHoudiniLandscapeUtils::CreateLandscapeLayerInfoObject( FHoudiniCookParams& Houd
     if ( !Package )
         return nullptr;
 
-    ULandscapeLayerInfoObject* LayerInfo = NewObject<ULandscapeLayerInfoObject>( Package, LayerObjectName, RF_Public | RF_Standalone /*| RF_Transactional*/ );
+	ULandscapeLayerInfoObject* LayerInfo = ConstructObject<ULandscapeLayerInfoObject>(ULandscapeLayerInfoObject::StaticClass(),
+		Package, LayerObjectName, RF_Public | RF_Standalone /*| RF_Transactional*/);
     LayerInfo->LayerName = LayerName;
 
     // Notify the asset registry
@@ -3080,7 +3241,7 @@ FHoudiniLandscapeUtils::UpdateOldLandscapeReference(ALandscape* OldLandscape, AL
         if ( HoudiniAssetComponent->IsTemplate() )
             continue;
 
-        if ( HoudiniAssetComponent->IsPendingKillOrUnreachable() )
+        if ( HoudiniAssetComponent->IsPendingKill() )
             continue;
 
         if ( !HoudiniAssetComponent->GetOuter() )

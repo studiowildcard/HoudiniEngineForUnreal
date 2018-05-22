@@ -25,8 +25,8 @@
 #include "HoudiniAssetParameterSeparator.h"
 #include "HoudiniEngineRuntimePrivatePCH.h"
 
-UHoudiniAssetParameterSeparator::UHoudiniAssetParameterSeparator( const FObjectInitializer & ObjectInitializer ) :
-    Super(ObjectInitializer)
+UHoudiniAssetParameterSeparator::UHoudiniAssetParameterSeparator( const class FPostConstructInitializeProperties& PCIP ) :
+    Super(PCIP)
 {}
 
 UHoudiniAssetParameterSeparator *
@@ -46,8 +46,8 @@ UHoudiniAssetParameterSeparator::Create(
         }
     }
 
-    UHoudiniAssetParameterSeparator * HoudiniAssetParameterSeparator = NewObject< UHoudiniAssetParameterSeparator >(
-        Outer, UHoudiniAssetParameterSeparator::StaticClass(), NAME_None, RF_Public | RF_Transactional );
+    UHoudiniAssetParameterSeparator * HoudiniAssetParameterSeparator = ConstructObject< UHoudiniAssetParameterSeparator >(
+		UHoudiniAssetParameterSeparator::StaticClass(), Outer, NAME_None, RF_Public | RF_Transactional);
 
     HoudiniAssetParameterSeparator->CreateParameter( InPrimaryObject, InParentParameter, InNodeId, ParmInfo );
     return HoudiniAssetParameterSeparator;

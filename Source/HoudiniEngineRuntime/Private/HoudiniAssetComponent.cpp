@@ -56,29 +56,31 @@
 #include "HoudiniEngineString.h"
 #include "HoudiniAssetInstanceInputField.h"
 #include "HoudiniInstancedActorComponent.h"
-#include "HoudiniMeshSplitInstancerComponent.h"
 #include "HoudiniParamUtils.h"
 #include "HoudiniLandscapeUtils.h"
 #include "Components/InstancedStaticMeshComponent.h"
-#include "Landscape.h"
+#include "Runtime/Engine/Classes/Landscape/Landscape.h"
 #include "MessageLog.h"
 #include "UObjectToken.h"
-#include "LandscapeInfo.h"
-#include "LandscapeLayerInfoObject.h"
+//#include "LandscapeInfo.h"
+//#include "LandscapeLayerInfoObject.h"
+#include "Runtime/Engine/Classes/Landscape/Landscape.h"
 #include "Materials/MaterialInstance.h"
 #include "Engine/StaticMeshSocket.h"
 #include "HoudiniCookHandler.h"
-#include "MetaData.h"
+//#include "MetaData.h"
+
 #if WITH_EDITOR
-#include "UnrealEdGlobals.h"
+//#include "UnrealEdGlobals.h"
 #include "Editor/UnrealEdEngine.h"
+#include "Editor/EditorEngine.h"
 #include "Editor.h"
-#include "EdMode.h"
-#include "EditorModeManager.h"
+//#include "EdMode.h"
+//#include "EditorModeManager.h"
 #include "EditorModes.h"
 #include "Editor/PropertyEditor/Public/IDetailsView.h"
 #include "Editor/UnrealEd/Private/GeomFitUtils.h"
-#include "MessageDialog.h"
+//#include "MessageDialog.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Notifications/SNotificationList.h"
 #include "NotificationManager.h"
@@ -89,7 +91,8 @@
 #include "Editor/PropertyEditor/Private/SDetailsViewBase.h"
 #include "StaticMeshResources.h"
 #include "SlateApplication.h"
-#endif
+#endif // WITH_EDITOR
+
 #include "Internationalization.h"
 
 
@@ -268,7 +271,7 @@ SAssetSelectionWidget::OnButtonCancel()
     return FReply::Handled();
 }
 
-#endif
+#endif // WITH_EDITOR
 
 
 // Macro to update given property on all components.
@@ -276,8 +279,7 @@ SAssetSelectionWidget::OnButtonCancel()
     do \
     { \
         TArray< UActorComponent * > ReregisterComponents; \
-        const auto & LocalAttachChildren = GetAttachChildren(); \
-        for ( TArray< USceneComponent * >::TConstIterator Iter( LocalAttachChildren ); Iter; ++Iter ) \
+        for ( TArray< USceneComponent * >::TConstIterator Iter( AttachChildren ); Iter; ++Iter ) \
         { \
             COMPONENT_CLASS * Component = Cast< COMPONENT_CLASS >( *Iter ); \
             if ( Component ) \
@@ -300,8 +302,8 @@ UHoudiniAssetComponent::bDisplayEngineNotInitialized = true;
 bool
 UHoudiniAssetComponent::bDisplayEngineHapiVersionMismatch = true;
 
-UHoudiniAssetComponent::UHoudiniAssetComponent( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetComponent::UHoudiniAssetComponent( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
 {
     HoudiniAsset = nullptr;
     bManualRecookRequested = false;
@@ -325,7 +327,7 @@ UHoudiniAssetComponent::UHoudiniAssetComponent( const FObjectInitializer & Objec
     bUseHoudiniMaterials = true;
     bCookingTriggersDownstreamCooks = true;
 
-    UObject * Object = ObjectInitializer.GetObj();
+    UObject * Object = PCIP.GetObject();
     UObject * ObjectOuter = Object->GetOuter();
 
     if ( ObjectOuter->IsA( AHoudiniAssetActor::StaticClass() ) )
@@ -355,6 +357,7 @@ UHoudiniAssetComponent::UHoudiniAssetComponent( const FObjectInitializer & Objec
     bNeverNeedsRenderUpdate = false;
 
     // Initialize static mesh generation parameters.
+	NumLODsToGenerate = 1;
     bGeneratedDoubleSidedGeometry = false;
     GeneratedPhysMaterial = nullptr;
     DefaultBodyInstance.SetCollisionProfileName("BlockAll");
@@ -512,9 +515,6 @@ UHoudiniAssetComponent::IsComponentValid() const
         return false;
 
     if ( IsTemplate() )
-        return false;
-
-    if ( IsPendingKillOrUnreachable() )
         return false;
 
     if ( !GetOuter() ) //|| !GetOuter()->GetLevel() )
@@ -684,7 +684,7 @@ UHoudiniAssetComponent::SetHoudiniAsset( UHoudiniAsset * InHoudiniAsset )
         }
     }
 
-#endif
+#endif // WITH_EDITOR
 }
 
 void
@@ -779,12 +779,12 @@ UHoudiniAssetComponent::CreateObjectGeoPartResources( TMap< FHoudiniGeoPartObjec
             else if ( HoudiniGeoPartObject.IsVisible() )
             {
                 // Create necessary component.
-                StaticMeshComponent = NewObject< UStaticMeshComponent >(
-                    GetOwner(), UStaticMeshComponent::StaticClass(),
+                StaticMeshComponent = ConstructObject< UStaticMeshComponent >(
+					UStaticMeshComponent::StaticClass(), GetOwner(),
                     NAME_None, RF_Transactional );
 
                 // Attach created static mesh component to our Houdini component.
-                StaticMeshComponent->AttachToComponent( this, FAttachmentTransformRules::KeepRelativeTransform );
+				StaticMeshComponent->AttachTo(this, NAME_None, EAttachLocation::KeepRelativeOffset);
 
                 StaticMeshComponent->SetStaticMesh( StaticMesh );
                 StaticMeshComponent->SetVisibility( true );
@@ -868,8 +868,8 @@ UHoudiniAssetComponent::CreateObjectGeoPartResources( TMap< FHoudiniGeoPartObjec
     CreateOrUpdateMaterialInstances();
 
     // If one of the children we created is movable, we need to set ourselves to movable as well
-    const auto & LocalAttachChildren = GetAttachChildren();
-    for ( TArray< USceneComponent * >::TConstIterator Iter( LocalAttachChildren ); Iter; ++Iter )
+    //const auto & LocalAttachChildren = GetAttachChildren();
+    for ( TArray< USceneComponent * >::TConstIterator Iter( AttachChildren ); Iter; ++Iter )
     {
         USceneComponent * SceneComponent = *Iter;
         if ( SceneComponent->Mobility == EComponentMobility::Movable )
@@ -911,9 +911,7 @@ UHoudiniAssetComponent::ReleaseObjectGeoPartResources(
             FReferencerInformationList Referencers;
 
             // Check if object is referenced and get its referencers, if it is.
-            bool bReferenced = IsReferenced(
-                ObjectMesh, GARBAGE_COLLECTION_KEEPFLAGS,
-                EInternalObjectFlags::GarbageCollectionKeepFlags, true, &Referencers );
+			bool bReferenced = IsReferenced(ObjectMesh, GARBAGE_COLLECTION_KEEPFLAGS, true, &Referencers);
 
             if ( !bReferenced || IsObjectReferencedLocally( StaticMesh, Referencers ) )
             {
@@ -956,31 +954,30 @@ UHoudiniAssetComponent::CleanUpAttachedStaticMeshComponents()
     TArray< UStaticMesh * > StaticMeshesToDelete;
 
     // Collect all the static mesh component for this asset
-    TMap<const UStaticMeshComponent *, FHoudiniGeoPartObject> AllSMC = CollectAllStaticMeshComponents();
+    TMap<const UStaticMeshComponent *, FHoudiniGeoPartObject> AllSMC = CollectAllStaticMeshComponents(true);
     
     // We'll check all the children static mesh components for junk
-    const auto & LocalAttachChildren = GetAttachChildren();
-    for (TArray< USceneComponent * >::TConstIterator Iter( LocalAttachChildren ); Iter; ++Iter)
+    for (TArray< USceneComponent * >::TConstIterator Iter( AttachChildren ); Iter; ++Iter)
     {
         UStaticMeshComponent * StaticMeshComponent = Cast< UStaticMeshComponent >(*Iter);
         if ( !StaticMeshComponent )
             continue;
 
         bool bNeedToCleanMeshComponent = false;
-        UStaticMesh * StaticMesh = StaticMeshComponent->GetStaticMesh();
+        UStaticMesh * StaticMesh = StaticMeshComponent->StaticMesh;
 
         if (AllSMC.Find(StaticMeshComponent) == nullptr)
             bNeedToCleanMeshComponent = true;
         
         // Do not clean up component attached to a socket
-        if ( StaticMeshComponent->GetAttachSocketName() != NAME_None )
+        if ( StaticMeshComponent->AttachSocketName != NAME_None )
             bNeedToCleanMeshComponent = false;
 
         if ( bNeedToCleanMeshComponent )
         {
             // This StaticMeshComponent is attached to the asset but not in the map, and not an instance.
             // It may be a leftover from previous cook/undo/redo and needs to be properly destroyed
-            StaticMeshComponent->DetachFromComponent( FDetachmentTransformRules::KeepRelativeTransform );
+			StaticMeshComponent->DetachFromParent();
             StaticMeshComponent->UnregisterComponent();
             StaticMeshComponent->DestroyComponent();
 
@@ -997,14 +994,13 @@ UHoudiniAssetComponent::CleanUpAttachedStaticMeshComponents()
         UStaticMesh * StaticMesh = StaticMeshesToDelete[MeshIdx];
                 
         UObject * ObjectMesh = (UObject *)StaticMesh;
-        if ( ObjectMesh->IsUnreachable() )
+
+		if (!!(ObjectMesh->GetFlags() & int32(EObjectFlags::RF_Unreachable)))
             continue;
 
         // Check if object is referenced and get its referencers, if it is.
-        FReferencerInformationList Referencers; 
-        bool bReferenced = IsReferenced(
-            ObjectMesh, GARBAGE_COLLECTION_KEEPFLAGS,
-            EInternalObjectFlags::GarbageCollectionKeepFlags, true, &Referencers);
+        FReferencerInformationList Referencers;
+		bool bReferenced = IsReferenced(ObjectMesh, GARBAGE_COLLECTION_KEEPFLAGS, true, &Referencers);
 
         if ( !bReferenced || IsObjectReferencedLocally( StaticMesh, Referencers ) )
         {
@@ -1120,25 +1116,28 @@ UHoudiniAssetComponent::GetAllUsedStaticMeshes( TArray< UStaticMesh * > & UsedSt
 }
 
 TMap<const UStaticMeshComponent *, FHoudiniGeoPartObject>
-UHoudiniAssetComponent::CollectAllStaticMeshComponents() const
+UHoudiniAssetComponent::CollectAllStaticMeshComponents(bool bIncludeInstancedMeshes) const
 {
     TMap<const UStaticMeshComponent *, FHoudiniGeoPartObject> OutSMComponentToPart;
 
-    // Add all the instance meshes, including the variations
-    for ( const UHoudiniAssetInstanceInput* InstanceInput : InstanceInputs )
-    {
-        for ( const UHoudiniAssetInstanceInputField* InputField : InstanceInput->GetInstanceInputFields() )
-        {
-            for ( int32 VarIndex = 0; VarIndex < InputField->InstanceVariationCount(); ++VarIndex )
-            {
-                UObject* Comp = InputField->GetInstancedComponent( VarIndex );
-                if ( Comp && InputField->GetInstanceVariation( VarIndex ) && Comp->IsA<UInstancedStaticMeshComponent>() )
-                {
-                    OutSMComponentToPart.Add( Cast<UInstancedStaticMeshComponent>( Comp ), InputField->GetHoudiniGeoPartObject() );
-                }
-            }
-        }
-    }
+	if (bIncludeInstancedMeshes)
+	{
+		// Add all the instance meshes, including the variations
+		for (const UHoudiniAssetInstanceInput* InstanceInput : InstanceInputs)
+		{
+			for (const UHoudiniAssetInstanceInputField* InputField : InstanceInput->GetInstanceInputFields())
+			{
+				for (int32 VarIndex = 0; VarIndex < InputField->InstanceVariationCount(); ++VarIndex)
+				{
+					UObject* Comp = InputField->GetInstancedComponent(VarIndex);
+					if (Comp && InputField->GetInstanceVariation(VarIndex) && Comp->IsA<UInstancedStaticMeshComponent>())
+					{
+						OutSMComponentToPart.Add(Cast<UInstancedStaticMeshComponent>(Comp), InputField->GetHoudiniGeoPartObject());
+					}
+				}
+			}
+		}
+	}
 
     // add all the plain UStaticMeshComponent
     for ( const auto& MeshPart : GetStaticMeshes() )
@@ -1152,21 +1151,38 @@ UHoudiniAssetComponent::CollectAllStaticMeshComponents() const
     return OutSMComponentToPart;
 }
 
-TMap<const UHoudiniInstancedActorComponent *, FHoudiniGeoPartObject>
+TMap<const UActorComponent *, FHoudiniGeoPartObject>
 UHoudiniAssetComponent::CollectAllInstancedActorComponents() const
 {
-    TMap<const UHoudiniInstancedActorComponent *, FHoudiniGeoPartObject> OutSMComponentToPart;
-    for ( const UHoudiniAssetInstanceInput* InstanceInput : InstanceInputs )
+    TMap<const UActorComponent *, FHoudiniGeoPartObject> OutSMComponentToPart;
+	TArray<UInstancedStaticMeshComponent*> instanceComponents;
+	// Add all the instance meshes, including the variations
+    for ( UHoudiniAssetInstanceInput* InstanceInput : InstanceInputs )
     {
         for ( const UHoudiniAssetInstanceInputField* InputField : InstanceInput->GetInstanceInputFields() )
         {
             for ( int32 VarIndex = 0; VarIndex < InputField->InstanceVariationCount(); ++VarIndex )
             {
-                UObject* Comp = InputField->GetInstancedComponent( VarIndex );
-                if ( InputField->GetInstanceVariation( VarIndex ) && Comp->IsA<UHoudiniInstancedActorComponent>() )
-                {
-                    OutSMComponentToPart.Add( Cast<UHoudiniInstancedActorComponent>( Comp ), InputField->GetHoudiniGeoPartObject() );
-                }
+				UObject* Comp = InputField->GetInstancedComponent(VarIndex);
+				if (InputField->GetInstanceVariation(VarIndex))
+				{
+					if (Comp->IsA<UHoudiniInstancedActorComponent>())
+					{
+						OutSMComponentToPart.Add(Cast<UActorComponent>(Comp), InputField->GetHoudiniGeoPartObject());
+					}
+					else if (Comp->IsA<UInstancedStaticMeshComponent>())
+					{
+						UStaticMesh* mesh = Cast<UStaticMesh>(InputField->GetInstanceVariation(VarIndex));
+						instanceComponents.Empty();
+						if (mesh && InstanceInput->CollectAllInstancedStaticMeshComponents(instanceComponents, mesh))
+						{
+							for (int32 compIdx = 0; compIdx < instanceComponents.Num(); compIdx++)
+							{
+								OutSMComponentToPart.Add(instanceComponents[compIdx], InputField->GetHoudiniGeoPartObject());
+							}
+						}
+					}
+				}
             }
         }
     }
@@ -1232,7 +1248,7 @@ UHoudiniAssetComponent::AssignUniqueActorLabel()
         {
             FString UniqueName;
             if ( FHoudiniEngineUtils::GetHoudiniAssetName( AssetId, UniqueName ) )
-                FActorLabelUtilities::SetActorLabelUnique( HoudiniAssetActor, UniqueName );
+				GEditor->SetActorLabelUnique(HoudiniAssetActor, UniqueName);
         }
     }
 }
@@ -1241,23 +1257,20 @@ void
 UHoudiniAssetComponent::StartHoudiniUIUpdateTicking()
 {
     // If we have no timer delegate spawned for ui update, spawn one.
-    if ( !TimerDelegateUIUpdate.IsBound() && GEditor )
+	if (GEditor && !GEditor->GetTimerManager()->IsTimerActive(this, &UHoudiniAssetComponent::TickHoudiniUIUpdate))
     {
-        TimerDelegateUIUpdate = FTimerDelegate::CreateUObject( this, &UHoudiniAssetComponent::TickHoudiniUIUpdate );
-
         // We need to register delegate with the timer system.
         static const float TickTimerDelay = 0.25f;
-        GEditor->GetTimerManager()->SetTimer( TimerHandleUIUpdate, TimerDelegateUIUpdate, TickTimerDelay, true );
+		GEditor->GetTimerManager()->SetTimer(this, &UHoudiniAssetComponent::TickHoudiniUIUpdate, TickTimerDelay, true);
     }
 }
 
 void
 UHoudiniAssetComponent::StopHoudiniUIUpdateTicking()
 {
-    if ( TimerDelegateUIUpdate.IsBound() && GEditor )
+    if (GEditor && GEditor->GetTimerManager()->IsTimerActive(this, &UHoudiniAssetComponent::TickHoudiniUIUpdate))
     {
-        GEditor->GetTimerManager()->ClearTimer( TimerHandleUIUpdate );
-        TimerDelegateUIUpdate.Unbind();
+		GEditor->GetTimerManager()->ClearTimer(this, &UHoudiniAssetComponent::TickHoudiniUIUpdate);
     }
 }
 
@@ -1271,13 +1284,11 @@ void
 UHoudiniAssetComponent::StartHoudiniTicking()
 {
     // If we have no timer delegate spawned for this component, spawn one.
-    if ( !TimerDelegateCooking.IsBound() && GEditor )
+	if (GEditor && !GEditor->GetTimerManager()->IsTimerActive(this, &UHoudiniAssetComponent::TickHoudiniComponent))
     {
-        TimerDelegateCooking = FTimerDelegate::CreateUObject( this, &UHoudiniAssetComponent::TickHoudiniComponent );
-
         // We need to register delegate with the timer system.
         static const float TickTimerDelay = 0.25f;
-        GEditor->GetTimerManager()->SetTimer( TimerHandleCooking, TimerDelegateCooking, TickTimerDelay, true );
+		GEditor->GetTimerManager()->SetTimer(this, &UHoudiniAssetComponent::TickHoudiniComponent, TickTimerDelay, true);
 
         // Grab current time for delayed notification.
         HapiNotificationStarted = FPlatformTime::Seconds();
@@ -1287,12 +1298,11 @@ UHoudiniAssetComponent::StartHoudiniTicking()
 void
 UHoudiniAssetComponent::StopHoudiniTicking()
 {
-    if ( TimerDelegateCooking.IsBound() && GEditor )
+	if (GEditor && GEditor->GetTimerManager()->IsTimerActive(this, &UHoudiniAssetComponent::TickHoudiniComponent))
     {
-        GEditor->GetTimerManager()->ClearTimer( TimerHandleCooking );
-        TimerDelegateCooking.Unbind();
+		GEditor->GetTimerManager()->ClearTimer(this, &UHoudiniAssetComponent::TickHoudiniComponent);
 
-        // Reset time for delayed notification.
+		// Reset time for delayed notification.
         HapiNotificationStarted = 0.0;
     }
 }
@@ -1321,6 +1331,7 @@ UHoudiniAssetComponent::PostCook( bool bCookError )
     FHoudiniCookParams HoudiniCookParams( this );
     HoudiniCookParams.StaticMeshBakeMode = FHoudiniCookParams::GetDefaultStaticMeshesCookMode();
     HoudiniCookParams.MaterialAndTextureBakeMode = FHoudiniCookParams::GetDefaultMaterialAndTextureCookMode();
+	HoudiniCookParams.NumLODsToGenerate = this->NumLODsToGenerate;
 
     if ( FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
         GetAssetId(),
@@ -1378,9 +1389,12 @@ UHoudiniAssetComponent::PostCook( bool bCookError )
     }
 }
 
+#endif // WITH_EDITOR
+
 void
 UHoudiniAssetComponent::TickHoudiniComponent()
 {
+#if WITH_EDITOR
     // Get settings.
     const UHoudiniRuntimeSettings * HoudiniRuntimeSettings = GetDefault< UHoudiniRuntimeSettings >();
 
@@ -1394,403 +1408,405 @@ UHoudiniAssetComponent::TickHoudiniComponent()
 
     // Check whether we want to display Slate cooking and instantiation notifications.
     bool bDisplaySlateCookingNotifications = false;
-    if ( HoudiniRuntimeSettings )
+    if (HoudiniRuntimeSettings)
         bDisplaySlateCookingNotifications = HoudiniRuntimeSettings->bDisplaySlateCookingNotifications;
 
-    if ( HapiGUID.IsValid() )
-    {
-        // If we have a valid task GUID.
-        if ( FHoudiniEngine::Get().RetrieveTaskInfo( HapiGUID, TaskInfo ) )
-        {
-            if ( EHoudiniEngineTaskState::None != TaskInfo.TaskState )
-            {
-                if ( !NotificationPtr.IsValid() && bDisplaySlateCookingNotifications )
-                {
-                    FNotificationInfo Info( TaskInfo.StatusText );
-
-                    Info.bFireAndForget = false;
-                    Info.FadeOutDuration = NotificationFadeOutDuration;
-                    Info.ExpireDuration = NotificationExpireDuration;
-
-                    TSharedPtr< FSlateDynamicImageBrush > HoudiniBrush = FHoudiniEngine::Get().GetHoudiniLogoBrush();
-                    if ( HoudiniBrush.IsValid() )
-                        Info.Image = HoudiniBrush.Get();
-
-                    if ( ( FPlatformTime::Seconds() - HapiNotificationStarted) >= NotificationUpdateFrequency )
-                    {
-                        if ( !IsPIEActive() )
-                            NotificationPtr = FSlateNotificationManager::Get().AddNotification( Info );
-                    }
-                }
-            }
-
-            switch( TaskInfo.TaskState )
-            {
-                case EHoudiniEngineTaskState::FinishedInstantiation:
-                {
-                    HOUDINI_LOG_MESSAGE( TEXT("    %s FinishedInstantiation." ), *GetOwner()->GetName() );
-
-                    if ( FHoudiniEngineUtils::IsValidAssetId( TaskInfo.AssetId ) )
-                    {
-                        // Set new asset id.
-                        SetAssetId( TaskInfo.AssetId );
-
-                        AHoudiniAssetActor * HoudiniAssetActor = GetHoudiniAssetActorOwner();
-                        if( HoudiniAssetActor && HoudiniAssetActor->GetName().StartsWith( AHoudiniAssetActor::StaticClass()->GetName() ) )
-                        {
-                            // Assign unique actor label based on asset name if it seems to have not been renamed already
-                            AssignUniqueActorLabel();
-                        }
-
-                        // Create default preset buffer.
-                        CreateDefaultPreset();
-
-                        // If necessary, set asset transform.
-                        if ( bUploadTransformsToHoudiniEngine )
-                        {
-                            // Retrieve the current component-to-world transform for this component.
-                            if ( !FHoudiniEngineUtils::HapiSetAssetTransform( AssetId, GetComponentTransform() ) )
-                                HOUDINI_LOG_MESSAGE( TEXT( "Failed Uploading Initial Transformation back to HAPI." ) );
-                        }
-
-                        if ( NotificationPtr.IsValid() && bDisplaySlateCookingNotifications )
-                        {
-                            TSharedPtr< SNotificationItem > NotificationItem = NotificationPtr.Pin();
-                            if ( NotificationItem.IsValid() )
-                            {
-                                NotificationItem->SetText( TaskInfo.StatusText );
-                                NotificationItem->ExpireAndFadeout();
-
-                                NotificationPtr.Reset();
-                            }
-                        }
-
-                        FHoudiniEngine::Get().RemoveTaskInfo( HapiGUID );
-                        HapiGUID.Invalidate();
-
-                        // We just finished instantiation, we need to reset cook counter.
-                        AssetCookCount = 0;
-
-                        if ( TaskInfo.bLoadedComponent )
-                            bFinishedLoadedInstantiation = true;
-
-                        FHoudiniEngine::Get().SetHapiState( HAPI_RESULT_SUCCESS );
-                    }
-                    else
-                    {
-                        bStopTicking = true;
-                        HOUDINI_LOG_MESSAGE( TEXT( "    %s Received invalid asset id." ), *GetOwner()->GetName() );
-                    }
-
-                    break;
-                }
-
-                case EHoudiniEngineTaskState::FinishedCooking:
-                {
-                    HOUDINI_LOG_MESSAGE( TEXT( "   %s FinishedCooking." ), *GetOwner()->GetName() );
-
-                    if ( FHoudiniEngineUtils::IsValidAssetId( TaskInfo.AssetId ) )
-                    {
-                        // Set new asset id.
-                        SetAssetId( TaskInfo.AssetId );
-
-                        // Call post cook event.
-                        PostCook();
-
-                        // Need to update rendering information.
-                        UpdateRenderingInformation();
-
-#if WITH_EDITOR
-                        // Force editor to redraw viewports.
-                        if ( GEditor )
-                            GEditor->RedrawAllViewports();
-
-                        // Update properties panel after instantiation.
-                        UpdateEditorProperties( true );
-#endif
-                    }
-                    else
-                    {
-                        HOUDINI_LOG_MESSAGE( TEXT( "    %s Received invalid asset id." ), *GetOwner()->GetName() );
-                    }
-
-                    if ( NotificationPtr.IsValid() && bDisplaySlateCookingNotifications )
-                    {
-                        TSharedPtr< SNotificationItem > NotificationItem = NotificationPtr.Pin();
-                        if ( NotificationItem.IsValid() )
-                        {
-                            NotificationItem->SetText( TaskInfo.StatusText );
-                            NotificationItem->ExpireAndFadeout();
-
-                            NotificationPtr.Reset();
-                        }
-                    }
-
-                    FHoudiniEngine::Get().RemoveTaskInfo( HapiGUID );
-                    HapiGUID.Invalidate();
-
-                    bStopTicking = true;
-                    AssetCookCount++;
-
-                    break;
-                }
-
-                case EHoudiniEngineTaskState::FinishedCookingWithErrors:
-                {
-                    HOUDINI_LOG_MESSAGE( TEXT( "    %s FinishedCookingWithErrors." ), *GetOwner()->GetName() );
-
-                    if ( FHoudiniEngineUtils::IsValidAssetId( TaskInfo.AssetId ) )
-                    {
-                        // Call post cook event with error parameter. This will create parameters, inputs and handles.
-                        PostCook( true );
-
-                        // Create default preset buffer.
-                        CreateDefaultPreset();
-#if WITH_EDITOR
-                        // Apply the Input presets for Houdini tools if we have any...
-                        ApplyHoudiniToolInputPreset();
-
-                        // Update properties panel.
-                        UpdateEditorProperties( true );
-#endif
-                        // If necessary, set asset transform.
-                        if ( bUploadTransformsToHoudiniEngine )
-                        {
-                            // Retrieve the current component-to-world transform for this component.
-                            if ( !FHoudiniEngineUtils::HapiSetAssetTransform(AssetId, GetComponentTransform() ) )
-                                HOUDINI_LOG_MESSAGE( TEXT( "Failed Uploading Initial Transformation back to HAPI." ) );
-                        }
-                    }
-
-                    if ( NotificationPtr.IsValid() && bDisplaySlateCookingNotifications )
-                    {
-                        TSharedPtr< SNotificationItem > NotificationItem = NotificationPtr.Pin();
-                        if ( NotificationItem.IsValid() )
-                        {
-                            NotificationItem->SetText( TaskInfo.StatusText );
-                            NotificationItem->ExpireAndFadeout();
-
-                            NotificationPtr.Reset();
-                        }
-                    }
-
-                    FHoudiniEngine::Get().RemoveTaskInfo( HapiGUID );
-                    HapiGUID.Invalidate();
-
-                    bStopTicking = true;
-                    AssetCookCount++;
-
-                    break;
-                }
-
-                case EHoudiniEngineTaskState::Aborted:
-                case EHoudiniEngineTaskState::FinishedInstantiationWithErrors:
-                {
-                    HOUDINI_LOG_ERROR( TEXT( "    %s FinishedInstantiationWithErrors." ), *GetOwner()->GetName() );
-
-                    bool bLicensingIssue = false;
-                    switch( TaskInfo.Result )
-                    {
-                        case HAPI_RESULT_NO_LICENSE_FOUND:
-                        {
-                            FHoudiniEngine::Get().SetHapiState( HAPI_RESULT_NO_LICENSE_FOUND );
-
-                            bLicensingIssue = true;
-                            break;
-                        }
-
-                        case HAPI_RESULT_DISALLOWED_NC_LICENSE_FOUND:
-                        case HAPI_RESULT_DISALLOWED_NC_ASSET_WITH_C_LICENSE:
-                        case HAPI_RESULT_DISALLOWED_NC_ASSET_WITH_LC_LICENSE:
-                        case HAPI_RESULT_DISALLOWED_LC_ASSET_WITH_C_LICENSE:
-                        {
-                            bLicensingIssue = true;
-                            break;
-                        }
-
-                        default:
-                        {
-                            break;
-                        }
-                    }
-
-                    if ( bLicensingIssue )
-                    {
-                        const FString & StatusMessage = TaskInfo.StatusText.ToString() ;
-                        HOUDINI_LOG_MESSAGE( TEXT( "%s" ), *StatusMessage );
-
-                        FString WarningTitle = TEXT( "Houdini Engine Plugin Warning" );
-                        FText WarningTitleText = FText::FromString( WarningTitle );
-                        FString WarningMessage = FString::Printf( TEXT( "Houdini License issue - %s." ), *StatusMessage );
-
-                        FMessageDialog::Debugf( FText::FromString( WarningMessage ), &WarningTitleText );
-                    }
-
-                    if ( NotificationPtr.IsValid() && bDisplaySlateCookingNotifications )
-                    {
-                        TSharedPtr< SNotificationItem > NotificationItem = NotificationPtr.Pin();
-                        if ( NotificationItem.IsValid() )
-                        {
-                            NotificationItem->SetText( TaskInfo.StatusText );
-                            NotificationItem->ExpireAndFadeout();
-
-                            NotificationPtr.Reset();
-                        }
-                    }
-
-                    if ( TaskInfo.bLoadedComponent )
-                        bFinishedLoadedInstantiation = true;
-
-                    FHoudiniEngine::Get().RemoveTaskInfo( HapiGUID );
-                    HapiGUID.Invalidate();
-
-                    bStopTicking = true;
-                    AssetCookCount = 0;
-
-                    break;
-                }
-
-                case EHoudiniEngineTaskState::Processing:
-                {
-
-                    if ( NotificationPtr.IsValid() && bDisplaySlateCookingNotifications )
-                    {
-                        TSharedPtr< SNotificationItem > NotificationItem = NotificationPtr.Pin();
-                        if ( NotificationItem.IsValid() )
-                            NotificationItem->SetText( TaskInfo.StatusText );
-                    }
-
-                    break;
-                }
-
-                case EHoudiniEngineTaskState::None:
-                default:
-                {
-                    break;
-                }
-            }
-        }
-        else
-        {
-            // Task information does not exist, we can stop ticking.
-            HapiGUID.Invalidate();
-            bStopTicking = true;
-        }
-    }
-
-    if (bFinishedLoadedInstantiation)
-        bAssetIsBeingInstantiated = false;
-
-    if ( !IsInstantiatingOrCooking() )
-    {
-        if ( HasBeenInstantiatedButNotCooked() || bParametersChanged || bComponentNeedsCook || bManualRecookRequested )
-        {
-            // Grab current time for delayed notification.
-            HapiNotificationStarted = FPlatformTime::Seconds();
-
-            // We just submitted a task, we want to continue ticking.
-            bStopTicking = false;
-
-            if ( bWaitingForUpstreamAssetsToInstantiate )
-            {
-                // We are waiting for upstream assets to instantiate. Update the flag
-                UpdateWaitingForUpstreamAssetsToInstantiate();
-
-                // Try instantiating this asset again.
-                if ( !bWaitingForUpstreamAssetsToInstantiate )
-                    bLoadedComponentRequiresInstantiation = true;
-            }
-            else if ( bLoadedComponentRequiresInstantiation )
-            {
-                // This component has been loaded and requires instantiation.
-                bLoadedComponentRequiresInstantiation = false;
-                StartTaskAssetInstantiation( true );
-            }
-            else if ( bFinishedLoadedInstantiation )
-            {
-                // If we are doing first cook after instantiation.
-                RefreshEditableNodesAfterLoad();
-
-                // Update parameter node id for all loaded parameters.
-                UpdateLoadedParameters();
-
-                // Additionally, we need to update and create assets for all input parameters that have geos assigned.
-                UpdateLoadedInputs();
-
-                // We also need to upload loaded curve points.
-                UploadLoadedCurves();
-
-                // If we finished loading instantiation, we can restore preset data.
-                if ( PresetBuffer.Num() > 0 )
-                {
-                    FHoudiniEngineUtils::SetAssetPreset( AssetId, PresetBuffer );
-                    PresetBuffer.Empty();
-                }
-
-                // Upload changed parameters back to HAPI.
-                UploadChangedParameters();
-
-                // Reset tranform changed flag.
-                bComponentNeedsCook = false;
-
-                // Create asset cooking task object and submit it for processing.
-                StartTaskAssetCooking();
-            }
-            else
-            {
-                if ( IsCookingEnabled() || bManualRecookRequested )
-                {
-                    // Upload changed parameters back to HAPI.
-                    UploadChangedParameters();
-
-                    // Create asset cooking task object and submit it for processing.
-                    StartTaskAssetCooking();
-
-                    // Reset ComponentNeedsCook flag.
-                    bComponentNeedsCook = false;
-                }
-                else
-                {
-                    // Cooking is disabled, but we still need to upload the parameters
-                    // and update the editor properties
-                    UploadChangedParameters();
-
-                    // Update properties panel.
-                    UpdateEditorProperties(true);
-
-                    // Remember that we have uncooked changes
-                    bComponentNeedsCook = true;
-
-                    // Stop ticking
-                    bStopTicking = true;
-                }
-            }
-        }
-        else
-        {
-            // Nothing has changed, we can terminate ticking.
-            bStopTicking = true;
-        }
-    }
-
-    if ( bNeedToUpdateNavigationSystem )
-    {
-#ifdef WITH_EDITOR
-        // We need to update the navigation system manually with the Actor or the NavMesh will not update properly
-        UWorld* World = GEditor->GetEditorWorldContext().World();
-        if (World && World->GetNavigationSystem())
-        {
-            AHoudiniAssetActor* HoudiniActor = GetHoudiniAssetActorOwner();
-            if(HoudiniActor)
-                World->GetNavigationSystem()->UpdateActorAndComponentsInNavOctree(*HoudiniActor);
-        }
-#endif
-        bNeedToUpdateNavigationSystem = false;
-    }
-
-    if ( bStopTicking )
-        StopHoudiniTicking();
+	if (HapiGUID.IsValid())
+	{
+		// If we have a valid task GUID.
+		if (FHoudiniEngine::Get().RetrieveTaskInfo(HapiGUID, TaskInfo))
+		{
+			if (EHoudiniEngineTaskState::None != TaskInfo.TaskState)
+			{
+				if (!NotificationPtr.IsValid() && bDisplaySlateCookingNotifications)
+				{
+					FNotificationInfo Info(TaskInfo.StatusText);
+
+					Info.bFireAndForget = false;
+					Info.FadeOutDuration = NotificationFadeOutDuration;
+					Info.ExpireDuration = NotificationExpireDuration;
+
+					TSharedPtr< FSlateDynamicImageBrush > HoudiniBrush = FHoudiniEngine::Get().GetHoudiniLogoBrush();
+					if (HoudiniBrush.IsValid())
+						Info.Image = HoudiniBrush.Get();
+
+					if ((FPlatformTime::Seconds() - HapiNotificationStarted) >= NotificationUpdateFrequency)
+					{
+						if (!IsPIEActive())
+							NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
+					}
+				}
+			}
+
+			switch (TaskInfo.TaskState)
+			{
+			case EHoudiniEngineTaskState::FinishedInstantiation:
+			{
+				HOUDINI_LOG_MESSAGE(TEXT("    %s FinishedInstantiation."), *GetOwner()->GetName());
+
+				if (FHoudiniEngineUtils::IsValidAssetId(TaskInfo.AssetId))
+				{
+					// Set new asset id.
+					SetAssetId(TaskInfo.AssetId);
+
+					AHoudiniAssetActor * HoudiniAssetActor = GetHoudiniAssetActorOwner();
+					if (HoudiniAssetActor && HoudiniAssetActor->GetName().StartsWith(AHoudiniAssetActor::StaticClass()->GetName()))
+					{
+						// Assign unique actor label based on asset name if it seems to have not been renamed already
+						AssignUniqueActorLabel();
+					}
+
+					// Create default preset buffer.
+					CreateDefaultPreset();
+
+					// If necessary, set asset transform.
+					if (bUploadTransformsToHoudiniEngine)
+					{
+						// Retrieve the current component-to-world transform for this component.
+						if (!FHoudiniEngineUtils::HapiSetAssetTransform(AssetId, GetComponentTransform()))
+							HOUDINI_LOG_MESSAGE(TEXT("Failed Uploading Initial Transformation back to HAPI."));
+					}
+
+					if (NotificationPtr.IsValid() && bDisplaySlateCookingNotifications)
+					{
+						TSharedPtr< SNotificationItem > NotificationItem = NotificationPtr.Pin();
+						if (NotificationItem.IsValid())
+						{
+							NotificationItem->SetText(TaskInfo.StatusText);
+							NotificationItem->ExpireAndFadeout();
+
+							NotificationPtr.Reset();
+						}
+					}
+
+					FHoudiniEngine::Get().RemoveTaskInfo(HapiGUID);
+					HapiGUID.Invalidate();
+
+					// We just finished instantiation, we need to reset cook counter.
+					AssetCookCount = 0;
+
+					if (TaskInfo.bLoadedComponent)
+						bFinishedLoadedInstantiation = true;
+
+					FHoudiniEngine::Get().SetHapiState(HAPI_RESULT_SUCCESS);
+				}
+				else
+				{
+					bStopTicking = true;
+					HOUDINI_LOG_MESSAGE(TEXT("    %s Received invalid asset id."), *GetOwner()->GetName());
+				}
+
+				break;
+			}
+
+			case EHoudiniEngineTaskState::FinishedCooking:
+			{
+				HOUDINI_LOG_MESSAGE(TEXT("   %s FinishedCooking."), *GetOwner()->GetName());
+
+				if (FHoudiniEngineUtils::IsValidAssetId(TaskInfo.AssetId))
+				{
+					// Set new asset id.
+					SetAssetId(TaskInfo.AssetId);
+
+					// Call post cook event.
+					PostCook();
+
+					// Need to update rendering information.
+					UpdateRenderingInformation();
+
+					// Force editor to redraw viewports.
+					if (GEditor)
+						GEditor->RedrawAllViewports();
+
+					// Update properties panel after instantiation.
+					UpdateEditorProperties(true);
+				}
+				else
+				{
+					HOUDINI_LOG_MESSAGE(TEXT("    %s Received invalid asset id."), *GetOwner()->GetName());
+				}
+
+				if (NotificationPtr.IsValid() && bDisplaySlateCookingNotifications)
+				{
+					TSharedPtr< SNotificationItem > NotificationItem = NotificationPtr.Pin();
+					if (NotificationItem.IsValid())
+					{
+						NotificationItem->SetText(TaskInfo.StatusText);
+						NotificationItem->ExpireAndFadeout();
+
+						NotificationPtr.Reset();
+					}
+				}
+
+				FHoudiniEngine::Get().RemoveTaskInfo(HapiGUID);
+				HapiGUID.Invalidate();
+
+				bStopTicking = true;
+				AssetCookCount++;
+
+				break;
+			}
+
+			case EHoudiniEngineTaskState::FinishedCookingWithErrors:
+			{
+				HOUDINI_LOG_MESSAGE(TEXT("    %s FinishedCookingWithErrors."), *GetOwner()->GetName());
+
+				if (FHoudiniEngineUtils::IsValidAssetId(TaskInfo.AssetId))
+				{
+					// Call post cook event with error parameter. This will create parameters, inputs and handles.
+					PostCook(true);
+
+					// Create default preset buffer.
+					CreateDefaultPreset();
+
+					// Apply the Input presets for Houdini tools if we have any...
+					ApplyHoudiniToolInputPreset();
+
+					// Update properties panel.
+					UpdateEditorProperties(true);
+
+					// If necessary, set asset transform.
+					if (bUploadTransformsToHoudiniEngine)
+					{
+						// Retrieve the current component-to-world transform for this component.
+						if (!FHoudiniEngineUtils::HapiSetAssetTransform(AssetId, GetComponentTransform()))
+							HOUDINI_LOG_MESSAGE(TEXT("Failed Uploading Initial Transformation back to HAPI."));
+					}
+				}
+
+				if (NotificationPtr.IsValid() && bDisplaySlateCookingNotifications)
+				{
+					TSharedPtr< SNotificationItem > NotificationItem = NotificationPtr.Pin();
+					if (NotificationItem.IsValid())
+					{
+						NotificationItem->SetText(TaskInfo.StatusText);
+						NotificationItem->ExpireAndFadeout();
+
+						NotificationPtr.Reset();
+					}
+				}
+
+				FHoudiniEngine::Get().RemoveTaskInfo(HapiGUID);
+				HapiGUID.Invalidate();
+
+				bStopTicking = true;
+				AssetCookCount++;
+
+				break;
+			}
+
+			case EHoudiniEngineTaskState::Aborted:
+			case EHoudiniEngineTaskState::FinishedInstantiationWithErrors:
+			{
+				HOUDINI_LOG_ERROR(TEXT("    %s FinishedInstantiationWithErrors."), *GetOwner()->GetName());
+
+				bool bLicensingIssue = false;
+				switch (TaskInfo.Result)
+				{
+				case HAPI_RESULT_NO_LICENSE_FOUND:
+				{
+					FHoudiniEngine::Get().SetHapiState(HAPI_RESULT_NO_LICENSE_FOUND);
+
+					bLicensingIssue = true;
+					break;
+				}
+
+				case HAPI_RESULT_DISALLOWED_NC_LICENSE_FOUND:
+				case HAPI_RESULT_DISALLOWED_NC_ASSET_WITH_C_LICENSE:
+				case HAPI_RESULT_DISALLOWED_NC_ASSET_WITH_LC_LICENSE:
+				case HAPI_RESULT_DISALLOWED_LC_ASSET_WITH_C_LICENSE:
+				{
+					bLicensingIssue = true;
+					break;
+				}
+
+				default:
+				{
+					break;
+				}
+				}
+
+				if (bLicensingIssue)
+				{
+					const FString & StatusMessage = TaskInfo.StatusText.ToString();
+					HOUDINI_LOG_MESSAGE(TEXT("%s"), *StatusMessage);
+
+					FString WarningTitle = TEXT("Houdini Engine Plugin Warning");
+					FText WarningTitleText = FText::FromString(WarningTitle);
+					FString WarningMessage = FString::Printf(TEXT("Houdini License issue - %s."), *StatusMessage);
+
+					FMessageDialog::Debugf(FText::FromString(WarningMessage), &WarningTitleText);
+				}
+
+				if (NotificationPtr.IsValid() && bDisplaySlateCookingNotifications)
+				{
+					TSharedPtr< SNotificationItem > NotificationItem = NotificationPtr.Pin();
+					if (NotificationItem.IsValid())
+					{
+						NotificationItem->SetText(TaskInfo.StatusText);
+						NotificationItem->ExpireAndFadeout();
+
+						NotificationPtr.Reset();
+					}
+				}
+
+				if (TaskInfo.bLoadedComponent)
+					bFinishedLoadedInstantiation = true;
+
+				FHoudiniEngine::Get().RemoveTaskInfo(HapiGUID);
+				HapiGUID.Invalidate();
+
+				bStopTicking = true;
+				AssetCookCount = 0;
+
+				break;
+			}
+
+			case EHoudiniEngineTaskState::Processing:
+			{
+
+				if (NotificationPtr.IsValid() && bDisplaySlateCookingNotifications)
+				{
+					TSharedPtr< SNotificationItem > NotificationItem = NotificationPtr.Pin();
+					if (NotificationItem.IsValid())
+						NotificationItem->SetText(TaskInfo.StatusText);
+				}
+
+				break;
+			}
+
+			case EHoudiniEngineTaskState::None:
+			default:
+			{
+				break;
+			}
+			}
+		}
+		else
+		{
+			// Task information does not exist, we can stop ticking.
+			HapiGUID.Invalidate();
+			bStopTicking = true;
+		}
+	}
+
+	if (bFinishedLoadedInstantiation)
+		bAssetIsBeingInstantiated = false;
+
+	if (!IsInstantiatingOrCooking())
+	{
+		if (HasBeenInstantiatedButNotCooked() || bParametersChanged || bComponentNeedsCook || bManualRecookRequested)
+		{
+			// Grab current time for delayed notification.
+			HapiNotificationStarted = FPlatformTime::Seconds();
+
+			// We just submitted a task, we want to continue ticking.
+			bStopTicking = false;
+
+			if (bWaitingForUpstreamAssetsToInstantiate)
+			{
+				// We are waiting for upstream assets to instantiate. Update the flag
+				UpdateWaitingForUpstreamAssetsToInstantiate();
+
+				// Try instantiating this asset again.
+				if (!bWaitingForUpstreamAssetsToInstantiate)
+					bLoadedComponentRequiresInstantiation = true;
+			}
+			else if (bLoadedComponentRequiresInstantiation)
+			{
+				// This component has been loaded and requires instantiation.
+
+				bLoadedComponentRequiresInstantiation = false;
+				StartTaskAssetInstantiation(true);
+			}
+			else if (bFinishedLoadedInstantiation)
+			{
+				// If we are doing first cook after instantiation.
+				RefreshEditableNodesAfterLoad();
+
+				// Update parameter node id for all loaded parameters.
+				UpdateLoadedParameters();
+
+				// Additionally, we need to update and create assets for all input parameters that have geos assigned.
+				UpdateLoadedInputs();
+
+				// We also need to upload loaded curve points.
+				UploadLoadedCurves();
+
+				// If we finished loading instantiation, we can restore preset data.
+				if (PresetBuffer.Num() > 0)
+				{
+					FHoudiniEngineUtils::SetAssetPreset(AssetId, PresetBuffer);
+					PresetBuffer.Empty();
+				}
+
+				// Upload changed parameters back to HAPI.
+				UploadChangedParameters();
+
+				// Reset tranform changed flag.
+				bComponentNeedsCook = false;
+
+				// Create asset cooking task object and submit it for processing.
+				StartTaskAssetCooking();
+			}
+			else
+			{
+				if ( IsCookingEnabled() || bManualRecookRequested )
+				{
+					// Upload changed parameters back to HAPI.
+					UploadChangedParameters();
+
+					// Create asset cooking task object and submit it for processing.
+					StartTaskAssetCooking();
+
+					// Reset ComponentNeedsCook flag.
+					bComponentNeedsCook = false;
+				}
+				else
+				{
+					// Cooking is disabled, but we still need to upload the parameters
+					// and update the editor properties
+					UploadChangedParameters();
+
+					// Update properties panel.
+					UpdateEditorProperties(true);
+
+					// Remember that we have uncooked changes
+					bComponentNeedsCook = true;
+
+					// Stop ticking
+					bStopTicking = true;
+				}
+			}
+		}
+		else
+		{
+			// Nothing has changed, we can terminate ticking.
+			bStopTicking = true;
+		}
+	}
+
+	if ( bNeedToUpdateNavigationSystem )
+	{
+		// We need to update the navigation system manually with the Actor or the NavMesh will not update properly
+		UWorld* World = GEditor->GetEditorWorldContext().World();
+		if (World && World->GetNavigationSystem())
+		{
+			AHoudiniAssetActor* HoudiniActor = GetHoudiniAssetActorOwner();
+			if (HoudiniActor)
+				World->GetNavigationSystem()->UpdateNavOctreeAll(HoudiniActor);
+		}
+
+		bNeedToUpdateNavigationSystem = false;
+	}
+
+	if ( bStopTicking )
+		StopHoudiniTicking();
+
+#endif // WITH_EDITOR
 }
+
+#if WITH_EDITOR
 
 void
 UHoudiniAssetComponent::UpdateEditorProperties( bool bConditionalUpdate )
@@ -1858,9 +1874,9 @@ UHoudiniAssetComponent::UpdateEditorProperties( bool bConditionalUpdate )
         // bEditorPropertiesNeedFullUpdate is false only when small changes (parameters value) have been made
         // We do not reselect the actor to avoid loosing the current selected parameter
 
-        // Reset selected actor to itself, force refresh and override the lock.
-        DetailsView->SetObjects( SelectedActors, bEditorPropertiesNeedFullUpdate, true );
-
+        // Reset selected actor to itself and force refresh
+        DetailsView->SetObjects( SelectedActors, bEditorPropertiesNeedFullUpdate );
+		
         if ( !bEditorPropertiesNeedFullUpdate )
             bEditorPropertiesNeedFullUpdate = true;
 
@@ -1918,8 +1934,8 @@ UHoudiniAssetComponent::StartTaskAssetInstantiation( bool bLocalLoadedComponent,
                         .Title( LOCTEXT( "WindowTitle", "Select an asset to instantiate" ) )
                         .ClientSize( FVector2D( 640, 480 ) )
                         .SupportsMinimize( false )
-                        .SupportsMaximize( false )
-                        .HasCloseButton( false );
+                        .SupportsMaximize( false );
+                        //.HasCloseButton( false );
 
                     Window->SetContent( SAssignNew( AssetSelectionWidget, SAssetSelectionWidget )
                         .WidgetWindow( Window )
@@ -2131,12 +2147,10 @@ void
 UHoudiniAssetComponent::SubscribeEditorDelegates()
 {
     // Add delegate for asset post import.
-    DelegateHandleAssetPostImport =
-        FEditorDelegates::OnAssetPostImport.AddUObject( this, &UHoudiniAssetComponent::OnAssetPostImport );
+	FEditorDelegates::OnAssetPostImport.AddUObject( this, &UHoudiniAssetComponent::OnAssetPostImport );
 
     // Add delegate for viewport drag and drop events.
-    DelegateHandleApplyObjectToActor =
-        FEditorDelegates::OnApplyObjectToActor.AddUObject( this, &UHoudiniAssetComponent::OnApplyObjectToActor );
+	FEditorDelegates::OnApplyObjectToActor.AddUObject( this, &UHoudiniAssetComponent::OnApplyObjectToActor );
 
     if ( GEditor )
     {
@@ -2148,10 +2162,10 @@ void
 UHoudiniAssetComponent::UnsubscribeEditorDelegates()
 {
     // Remove delegate for asset post import.
-    FEditorDelegates::OnAssetPostImport.Remove( DelegateHandleAssetPostImport );
+	FEditorDelegates::OnAssetPostImport.RemoveUObject( this, &UHoudiniAssetComponent::OnAssetPostImport );
 
     // Remove delegate for viewport drag and drop events.
-    FEditorDelegates::OnApplyObjectToActor.Remove( DelegateHandleApplyObjectToActor );
+	FEditorDelegates::OnApplyObjectToActor.RemoveUObject( this, &UHoudiniAssetComponent::OnApplyObjectToActor );
 
     if ( GEditor )
     {
@@ -2175,8 +2189,7 @@ UHoudiniAssetComponent::PostEditChangeProperty( FPropertyChangedEvent & Property
     if ( Property->GetName() == TEXT( "Mobility" ) )
     {
         // Mobility was changed, we need to update it for all attached components as well.
-        const auto & LocalAttachChildren = GetAttachChildren();
-        for ( TArray< USceneComponent * >::TConstIterator Iter( LocalAttachChildren ); Iter; ++Iter)
+		for (TArray< USceneComponent * >::TConstIterator Iter(AttachChildren); Iter; ++Iter)
         {
             USceneComponent * SceneComponent = *Iter;
             SceneComponent->SetMobility( Mobility );
@@ -2226,7 +2239,7 @@ UHoudiniAssetComponent::PostEditChangeProperty( FPropertyChangedEvent & Property
                 SetStaticMeshGenerationParameters( StaticMesh );
                 FHoudiniScopedGlobalSilence ScopedGlobalSilence;
                 StaticMesh->Build( true );
-                RefreshCollisionChange( *StaticMesh );
+                RefreshCollisionChange( StaticMesh );
             }
 
             return;
@@ -2276,18 +2289,18 @@ UHoudiniAssetComponent::PostEditChangeProperty( FPropertyChangedEvent & Property
         }
         else if ( CategoryRendering == Category )
         {
-            if ( Property->GetName() == TEXT( "bVisibleInReflectionCaptures" ) )
-            {
-                HOUDINI_UPDATE_ALL_CHILD_COMPONENTS( UPrimitiveComponent, bVisibleInReflectionCaptures );
-            }
-            else if ( Property->GetName() == TEXT( "bRenderInMainPass" ) )
+            //if ( Property->GetName() == TEXT( "bVisibleInReflectionCaptures" ) )
+            //{
+            //    HOUDINI_UPDATE_ALL_CHILD_COMPONENTS( UPrimitiveComponent, bVisibleInReflectionCaptures );
+            //}
+            if ( Property->GetName() == TEXT( "bRenderInMainPass" ) )
             {
                 HOUDINI_UPDATE_ALL_CHILD_COMPONENTS( UPrimitiveComponent, bRenderInMainPass );
             }
-            else if ( Property->GetName() == TEXT( "bRenderInMono" ) )
-            {
-                HOUDINI_UPDATE_ALL_CHILD_COMPONENTS( UPrimitiveComponent, bRenderInMono );
-            }
+            //else if ( Property->GetName() == TEXT( "bRenderInMono" ) )
+            //{
+            //    HOUDINI_UPDATE_ALL_CHILD_COMPONENTS( UPrimitiveComponent, bRenderInMono );
+            //}
             else if ( Property->GetName() == TEXT( "bOwnerNoSee" ) )
             {
                 HOUDINI_UPDATE_ALL_CHILD_COMPONENTS( UPrimitiveComponent, bOwnerNoSee );
@@ -2312,10 +2325,10 @@ UHoudiniAssetComponent::PostEditChangeProperty( FPropertyChangedEvent & Property
             {
                 HOUDINI_UPDATE_ALL_CHILD_COMPONENTS( UPrimitiveComponent, CustomDepthStencilValue );
             }
-            else if ( Property->GetName() == TEXT( "CustomDepthStencilWriteMask" ) )
-            {
-                HOUDINI_UPDATE_ALL_CHILD_COMPONENTS( UPrimitiveComponent, CustomDepthStencilWriteMask );
-            }
+            //else if ( Property->GetName() == TEXT( "CustomDepthStencilWriteMask" ) )
+            //{
+            //    HOUDINI_UPDATE_ALL_CHILD_COMPONENTS( UPrimitiveComponent, CustomDepthStencilWriteMask );
+            //}
             else if ( Property->GetName() == TEXT( "TranslucencySortPriority" ) )
             {
                 HOUDINI_UPDATE_ALL_CHILD_COMPONENTS( UPrimitiveComponent, TranslucencySortPriority );
@@ -2386,10 +2399,10 @@ UHoudiniAssetComponent::PostEditChangeProperty( FPropertyChangedEvent & Property
             {
                 HOUDINI_UPDATE_ALL_CHILD_COMPONENTS( UPrimitiveComponent, bIgnoreRadialForce );
             }
-            else if ( Property->GetName() == TEXT( "bApplyImpulseOnDamage" ) )
-            {
-                HOUDINI_UPDATE_ALL_CHILD_COMPONENTS( UPrimitiveComponent, bApplyImpulseOnDamage );
-            }
+            //else if ( Property->GetName() == TEXT( "bApplyImpulseOnDamage" ) )
+            //{
+            //    HOUDINI_UPDATE_ALL_CHILD_COMPONENTS( UPrimitiveComponent, bApplyImpulseOnDamage );
+            //}
             else if ( Property->GetName() == TEXT( "bShouldUpdatePhysicsVolume" ) )
             {
                 HOUDINI_UPDATE_ALL_CHILD_COMPONENTS( USceneComponent, bShouldUpdatePhysicsVolume );
@@ -2426,18 +2439,17 @@ UHoudiniAssetComponent::RemoveAllAttachedComponents()
 {
     while ( true )
     {
-        const int32 ChildCount = GetAttachChildren().Num();
+        const int32 ChildCount = AttachChildren.Num();
         if ( ChildCount <= 0 )
             break;
 
-        USceneComponent * Component = GetAttachChildren()[ ChildCount - 1 ];
-
-        Component->DetachFromComponent( FDetachmentTransformRules::KeepRelativeTransform );
+        USceneComponent * Component = AttachChildren[ ChildCount - 1 ];
+		Component->DetachFromParent();
         Component->UnregisterComponent();
         Component->DestroyComponent();
     }
 
-    check( GetAttachChildren().Num() == 0 );
+    check( AttachChildren.Num() == 0 );
 }
 
 void
@@ -2617,13 +2629,13 @@ UHoudiniAssetComponent::OnApplyObjectToActor( UObject* ObjectToApply, AActor * A
         if ( !StaticMeshComponent || !StaticMesh )
             continue;
 
-        const TArray< class UMaterialInterface * > & OverrideMaterials = StaticMeshComponent->OverrideMaterials;
+        const TArray< class UMaterialInterface * > & OverrideMaterials = StaticMeshComponent->Materials;
         for ( int32 MaterialIdx = 0; MaterialIdx < OverrideMaterials.Num(); ++MaterialIdx )
         {
             UMaterialInterface * OverridenMaterial = OverrideMaterials[ MaterialIdx ];
             if ( OverridenMaterial && OverridenMaterial == Material )
             {
-                if ( MaterialIdx < StaticMesh->StaticMaterials.Num() )
+                if ( MaterialIdx < StaticMesh->Materials.Num() )
                     MaterialReplacementsMap.Add( StaticMesh, MaterialIdx );
             }
         }
@@ -2648,7 +2660,7 @@ UHoudiniAssetComponent::OnApplyObjectToActor( UObject* ObjectToApply, AActor * A
         int32 MaterialIdx = Iter.Value();
 
         // Get old material.
-        UMaterialInterface * OldMaterial = StaticMesh->StaticMaterials[ MaterialIdx ].MaterialInterface;
+        UMaterialInterface * OldMaterial = StaticMesh->Materials[ MaterialIdx ];
 
         // Locate geo part object.
         FHoudiniGeoPartObject HoudiniGeoPartObject = LocateGeoPartObject( StaticMesh );
@@ -2658,7 +2670,7 @@ UHoudiniAssetComponent::OnApplyObjectToActor( UObject* ObjectToApply, AActor * A
         if ( ReplaceMaterial( HoudiniGeoPartObject, Material, OldMaterial, MaterialIdx ) )
         {
             StaticMesh->Modify();
-            StaticMesh->StaticMaterials[ MaterialIdx ].MaterialInterface = Material;
+            StaticMesh->Materials[ MaterialIdx ] = Material;
 
             StaticMesh->PreEditChange( nullptr );
             StaticMesh->PostEditChange();
@@ -2678,7 +2690,8 @@ UHoudiniAssetComponent::OnApplyObjectToActor( UObject* ObjectToApply, AActor * A
             {
                 for ( int32 Idx = 0; Idx < InstancedStaticMeshComponents.Num(); ++Idx )
                 {
-                    UInstancedStaticMeshComponent * InstancedStaticMeshComponent = InstancedStaticMeshComponents[ Idx ];
+                    UInstancedStaticMeshComponent * InstancedStaticMeshComponent =
+                        InstancedStaticMeshComponents[ Idx ];
 
                     if ( InstancedStaticMeshComponent )
                     {
@@ -2713,9 +2726,9 @@ UHoudiniAssetComponent::CreateDefaultPreset()
 }
 
 void
-UHoudiniAssetComponent::OnUpdateTransform( EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport )
+UHoudiniAssetComponent::OnUpdateTransform( bool bSkipPhysicsMove )
 {
-    Super::OnUpdateTransform( UpdateTransformFlags, Teleport );
+	Super::OnUpdateTransform( bSkipPhysicsMove );
 
     CheckedUploadTransform();
 }
@@ -2763,7 +2776,7 @@ UHoudiniAssetComponent::RemoveBakingBaseNameOverride( const FHoudiniGeoPartObjec
     return BakeNameOverrides.Remove( GeoPartObject ) > 0;
 }
 
-#endif  // WITH_EDITOR
+#endif // WITH_EDITOR
 
 FText
 UHoudiniAssetComponent::GetBakeFolder() const
@@ -2830,13 +2843,12 @@ UHoudiniAssetComponent::CalcBounds( const FTransform & LocalToWorld ) const
 
     LocalBounds = FBoxSphereBounds( BoundingBox );
 
-    const auto & LocalAttachedChildren = GetAttachChildren();
-    for (int32 Idx = 0; Idx < LocalAttachedChildren.Num(); ++Idx)
+    for (int32 Idx = 0; Idx < AttachChildren.Num(); ++Idx)
     {
-        if ( !LocalAttachedChildren[ Idx ] )
+		if (!AttachChildren[Idx])
             continue;
 
-        FBoxSphereBounds ChildBounds = LocalAttachedChildren[ Idx ]->CalcBounds( LocalToWorld );
+		FBoxSphereBounds ChildBounds = AttachChildren[Idx]->CalcBounds(LocalToWorld);
         if ( !ChildBounds.ContainsNaN() )
             LocalBounds = LocalBounds + ChildBounds;
     }
@@ -2852,8 +2864,7 @@ UHoudiniAssetComponent::UpdateRenderingInformation()
 
     // Update physics representation right away.
     RecreatePhysicsState();
-    const auto & LocalAttachChildren = GetAttachChildren();
-    for ( TArray< USceneComponent * >::TConstIterator Iter( LocalAttachChildren ); Iter; ++Iter )
+    for ( TArray< USceneComponent * >::TConstIterator Iter( AttachChildren ); Iter; ++Iter )
     {
         USceneComponent * SceneComponent = *Iter;
         if( SceneComponent )
@@ -2871,28 +2882,28 @@ UHoudiniAssetComponent::PostLoadReattachComponents()
     {
         UStaticMeshComponent * StaticMeshComponent = Iter.Value();
         if ( StaticMeshComponent )
-            StaticMeshComponent->AttachToComponent( this, FAttachmentTransformRules::KeepRelativeTransform );
+			StaticMeshComponent->AttachTo( this, NAME_None, EAttachLocation::KeepRelativeOffset );
     }
 
     for ( TMap< FHoudiniGeoPartObject, UHoudiniSplineComponent * >::TIterator Iter( SplineComponents ); Iter; ++Iter )
     {
         UHoudiniSplineComponent * HoudiniSplineComponent = Iter.Value();
         if( HoudiniSplineComponent )
-            HoudiniSplineComponent->AttachToComponent( this, FAttachmentTransformRules::KeepRelativeTransform );
+			HoudiniSplineComponent->AttachTo( this, NAME_None, EAttachLocation::KeepRelativeOffset );
     }
 
     for ( TMap< FString, UHoudiniHandleComponent * >::TIterator Iter( HandleComponents ); Iter; ++Iter )
     {
         UHoudiniHandleComponent * HoudiniHandleComponent = Iter.Value();
         if ( HoudiniHandleComponent )
-            HoudiniHandleComponent->AttachToComponent( this, FAttachmentTransformRules::KeepRelativeTransform );
+			HoudiniHandleComponent->AttachTo( this, NAME_None, EAttachLocation::KeepRelativeOffset );
     }
 
     for (TMap< FHoudiniGeoPartObject, ALandscape * >::TIterator Iter(LandscapeComponents); Iter; ++Iter)
     {
         ALandscape * HoudiniLandscape = Iter.Value();
         if ( HoudiniLandscape )
-            HoudiniLandscape->AttachToComponent(this, FAttachmentTransformRules::KeepRelativeTransform);
+			HoudiniLandscape->AttachRootComponentTo(this, NAME_None, EAttachLocation::KeepRelativeOffset);
     }
 }
 
@@ -2918,8 +2929,8 @@ UHoudiniAssetComponent::OnComponentCreated()
     if ( !HoudiniAssetComponentMaterials )
     {
         HoudiniAssetComponentMaterials =
-            NewObject< UHoudiniAssetComponentMaterials >(
-                this, UHoudiniAssetComponentMaterials::StaticClass(), NAME_None, RF_Public | RF_Transactional );
+            ConstructObject< UHoudiniAssetComponentMaterials >(
+				UHoudiniAssetComponentMaterials::StaticClass(), this, NAME_None, RF_Public | RF_Transactional);
     }
 
     // Subscribe to delegates.
@@ -2927,7 +2938,7 @@ UHoudiniAssetComponent::OnComponentCreated()
 }
 
 void
-UHoudiniAssetComponent::OnComponentDestroyed( bool bDestroyingHierarchy )
+UHoudiniAssetComponent::OnComponentDestroyed()
 {
     // Release static mesh related resources.
     ReleaseObjectGeoPartResources( StaticMeshes );
@@ -2964,7 +2975,7 @@ UHoudiniAssetComponent::OnComponentDestroyed( bool bDestroyingHierarchy )
     // Unsubscribe from Editor events.
     UnsubscribeEditorDelegates();
 
-    Super::OnComponentDestroyed( bDestroyingHierarchy );
+    Super::OnComponentDestroyed();
 }
 
 void
@@ -3000,7 +3011,8 @@ UHoudiniAssetComponent::OnRegister()
         }
     }
 }
-#endif
+
+#endif // WITH_EDITOR
 
 bool
 UHoudiniAssetComponent::ContainsHoudiniLogoGeometry() const
@@ -3022,14 +3034,16 @@ UHoudiniAssetComponent::CreateStaticMeshHoudiniLogoResource( TMap< FHoudiniGeoPa
 }
 
 #if WITH_EDITOR
+
 void
 UHoudiniAssetComponent::PostLoad()
 {
     Super::PostLoad();
 
     // If we are being cooked, we don't want to do anything
-    if( GIsCookerLoadingPackage )
-        return;
+	//JC: Is there a replacement for this?
+    //if( GIsCookerLoadingPackage )
+    //    return;
 
     // Only do PostLoad stuff if we are in the editor world
     if( UWorld* World = GetWorld() )
@@ -3083,8 +3097,7 @@ UHoudiniAssetComponent::PostLoad()
 
     // Update mobility.
     // If one of our children is movable, we need to set ourselves to movable as well
-    const auto & LocalAttachChildren = GetAttachChildren();
-    for (TArray< USceneComponent * >::TConstIterator Iter(LocalAttachChildren); Iter; ++Iter)
+    for (TArray< USceneComponent * >::TConstIterator Iter(AttachChildren); Iter; ++Iter)
     {
         USceneComponent * SceneComponent = *Iter;
         if (SceneComponent->Mobility == EComponentMobility::Movable)
@@ -3101,7 +3114,8 @@ UHoudiniAssetComponent::PostLoad()
     // Update properties panel after instantiation.
     UpdateEditorProperties( false );
 }
-#endif
+
+#endif // WITH_EDITOR
 
 void
 UHoudiniAssetComponent::Serialize( FArchive & Ar )
@@ -3421,7 +3435,9 @@ UHoudiniAssetComponent::SetStaticMeshGenerationParameters( UStaticMesh * StaticM
 
     // Make sure static mesh has a new lighting guid.
     StaticMesh->LightingGuid = FGuid::NewGuid();
+#if WITH_EDITORONLY_DATA
     StaticMesh->LODGroup = NAME_None;
+#endif
 
     // Set resolution of lightmap.
     StaticMesh->LightMapResolution = GeneratedLightMapResolution;
@@ -3471,8 +3487,7 @@ UHoudiniAssetComponent::SetStaticMeshGenerationParameters( UStaticMesh * StaticM
 
     // We want to use all of geometry for collision detection purposes.
     BodySetup->bMeshCollideAll = true;
-
-#endif
+#endif // WITH_EDITOR
 }
 
 #if WITH_EDITOR
@@ -3487,14 +3502,14 @@ UHoudiniAssetComponent::CloneComponentsAndCreateActor()
     if ( !Level )
         Level = GWorld->GetCurrentLevel();
 
-    AActor * Actor = NewObject< AActor >( Level, NAME_None );
-    Actor->AddToRoot();
+	AActor* Actor = ConstructObject<AActor>(AHoudiniEmptyActor::StaticClass(), Level, NAME_None);
+	Actor->AddToRoot();
 
     USceneComponent * RootComponent =
-        NewObject< USceneComponent >( Actor, USceneComponent::GetDefaultSceneRootVariableName(), RF_Transactional );
+		ConstructObject<USceneComponent>(USceneComponent::StaticClass(), Actor, TEXT("DefaultSceneRoot"), RF_Transactional);
 
     RootComponent->SetMobility(EComponentMobility::Static);
-    RootComponent->bVisualizeComponent = true;
+    //RootComponent->bVisualizeComponent = true;
 
     const FTransform & ComponentWorldTransform = GetComponentTransform();
     RootComponent->SetWorldLocationAndRotation(
@@ -3502,7 +3517,8 @@ UHoudiniAssetComponent::CloneComponentsAndCreateActor()
         ComponentWorldTransform.GetRotation() );
 
     Actor->SetRootComponent( RootComponent );
-    Actor->AddInstanceComponent( RootComponent );
+
+    Actor->AddOwnedComponent( RootComponent );
 
     RootComponent->RegisterComponent();
 
@@ -3528,9 +3544,9 @@ UHoudiniAssetComponent::CloneComponentsAndCreateActor()
 
             // Create static mesh component for baked mesh.
             UStaticMeshComponent * DuplicatedComponent =
-                NewObject< UStaticMeshComponent >( Actor, UStaticMeshComponent::StaticClass(), NAME_None );//, RF_Transactional );
+				ConstructObject< UStaticMeshComponent >(UStaticMeshComponent::StaticClass(), Actor, NAME_None);//, RF_Transactional );
 
-            Actor->AddInstanceComponent( DuplicatedComponent );
+			Actor->AddOwnedComponent( DuplicatedComponent );
 
             DuplicatedComponent->SetStaticMesh( OutStaticMesh );
             DuplicatedComponent->SetVisibility( true );
@@ -3547,14 +3563,15 @@ UHoudiniAssetComponent::CloneComponentsAndCreateActor()
             // Reapply the uproperties modified by attributes on the duplicated component
             FHoudiniEngineUtils::UpdateUPropertyAttributesOnObject( DuplicatedComponent, HoudiniGeoPartObject );
 
-            DuplicatedComponent->AttachToComponent( RootComponent, FAttachmentTransformRules::KeepRelativeTransform );
+			DuplicatedComponent->AttachTo( RootComponent, NAME_None, EAttachLocation::KeepRelativeOffset );
+
             DuplicatedComponent->RegisterComponent();
         }
     }
 
     // Duplicate instanced static mesh components.
     {
-        for( auto& InstanceInput : InstanceInputs )
+		for (auto InstanceInput : InstanceInputs)
         {
             if ( InstanceInput )
                 InstanceInput->CloneComponentsAndAttachToActor( Actor );
@@ -3681,13 +3698,12 @@ void UHoudiniAssetComponent::SanitizePostLoad()
         UMeshComponent* SMC = SMCElem.Value;
         if( SM && SMC )
         {
-            auto& StaticMeshMaterials = SM->StaticMaterials;
-            for( int32 MaterialIdx = 0; MaterialIdx < StaticMeshMaterials.Num(); ++MaterialIdx )
+			for (int32 MaterialIdx = 0; MaterialIdx < SM->Materials.Num(); ++MaterialIdx)
             {
-                if( nullptr == StaticMeshMaterials[ MaterialIdx ].MaterialInterface )
+				if ( nullptr == SM->Materials[MaterialIdx] )
                 {
                     auto DefaultMI = FHoudiniEngine::Get().GetHoudiniDefaultMaterial().Get();
-                    StaticMeshMaterials[ MaterialIdx ].MaterialInterface = DefaultMI;
+					SM->Materials[MaterialIdx] = DefaultMI;
                     SMC->SetMaterial( MaterialIdx, DefaultMI );
                 }
             }
@@ -3712,7 +3728,7 @@ UHoudiniAssetComponent::PostInitProperties()
         // Copy static mesh generation parameters from settings.
         bGeneratedDoubleSidedGeometry = HoudiniRuntimeSettings->bDoubleSidedGeometry;
         GeneratedPhysMaterial = HoudiniRuntimeSettings->PhysMaterial;
-	DefaultBodyInstance = HoudiniRuntimeSettings->DefaultBodyInstance;
+		DefaultBodyInstance = HoudiniRuntimeSettings->DefaultBodyInstance;
         GeneratedCollisionTraceFlag = HoudiniRuntimeSettings->CollisionTraceFlag;
         GeneratedLpvBiasMultiplier = HoudiniRuntimeSettings->LpvBiasMultiplier;
         GeneratedLightMapResolution = HoudiniRuntimeSettings->LightMapResolution;
@@ -3726,7 +3742,7 @@ UHoudiniAssetComponent::PostInitProperties()
     }
 }
 
-#endif
+#endif // WITH_EDITOR
 
 bool
 UHoudiniAssetComponent::LocateStaticMeshes(
@@ -3909,8 +3925,8 @@ UHoudiniAssetComponent::CreateCurves( const TArray< FHoudiniGeoPartObject > & Fo
         else
         {
             // We need to create a new curve.
-            HoudiniSplineComponent = NewObject< UHoudiniSplineComponent >(
-                this, UHoudiniSplineComponent::StaticClass(),
+            HoudiniSplineComponent = ConstructObject< UHoudiniSplineComponent >(
+				UHoudiniSplineComponent::StaticClass(), this,
                 NAME_None, RF_Public | RF_Transactional );
 
             bCurveCreated = true;
@@ -3921,7 +3937,7 @@ UHoudiniAssetComponent::CreateCurves( const TArray< FHoudiniGeoPartObject > & Fo
 
         // If we have no parent, we need to re-attach.
         if ( !HoudiniSplineComponent->GetAttachParent() )
-            HoudiniSplineComponent->AttachToComponent( this, FAttachmentTransformRules::KeepRelativeTransform );
+			HoudiniSplineComponent->AttachTo( this, NAME_None, EAttachLocation::KeepRelativeOffset );
 
         HoudiniSplineComponent->SetVisibility( true );
 
@@ -3952,12 +3968,10 @@ UHoudiniAssetComponent::CreateCurves( const TArray< FHoudiniGeoPartObject > & Fo
             CurveMethodValue, ( CurveClosed == 1 ) );
     }
 
-#if WITH_EDITOR
     // The editor caches the current selection visualizer, so we need to trick
     // and pretend the selection has changed so that the HSplineVisualizer can be drawn immediately
     if ( bCurveCreated && GUnrealEd )
         GUnrealEd->NoteSelectionChange();
-#endif
 
     ClearCurves();
     SplineComponents = NewSplineComponents;
@@ -4163,8 +4177,8 @@ UHoudiniAssetComponent::CreateHandles()
             }
             else
             {
-                HandleComponent = NewObject< UHoudiniHandleComponent >(
-                    this, UHoudiniHandleComponent::StaticClass(),
+                HandleComponent = ConstructObject< UHoudiniHandleComponent >(
+					UHoudiniHandleComponent::StaticClass(), this,
                     NAME_None, RF_Public | RF_Transactional );
             }
 
@@ -4173,7 +4187,7 @@ UHoudiniAssetComponent::CreateHandles()
 
             // If we have no parent, we need to re-attach.
             if ( !HandleComponent->GetAttachParent() )
-                HandleComponent->AttachToComponent( this, FAttachmentTransformRules::KeepRelativeTransform );
+                HandleComponent->AttachTo( this, NAME_None, EAttachLocation::KeepRelativeOffset );
 
             HandleComponent->SetVisibility( true );
 
@@ -4398,11 +4412,11 @@ UHoudiniAssetComponent::LocateInstanceInput( const FHoudiniGeoPartObject& GeoPar
 {
     for ( UHoudiniAssetInstanceInput* InstanceInput : InstanceInputs )
     {
-	// Verify path to instancer + various configuration flags
+		// Verify path to instancer + various configuration flags
         if ( InstanceInput->GetGeoPartObject().GetNodePath() == GeoPart.GetNodePath() &&
-	    UHoudiniAssetInstanceInput::GetInstancerFlags(GeoPart).HoudiniAssetInstanceInputFlagsPacked ==
-		InstanceInput->Flags.HoudiniAssetInstanceInputFlagsPacked )
-	{
+	    	UHoudiniAssetInstanceInput::GetInstancerFlags(GeoPart).HoudiniAssetInstanceInputFlagsPacked ==
+			InstanceInput->Flags.HoudiniAssetInstanceInputFlagsPacked )
+		{
             return InstanceInput;
         }
     }
@@ -4582,7 +4596,7 @@ UHoudiniAssetComponent::CreateAllLandscapes( const TArray< FHoudiniGeoPartObject
     HoudiniCookParams.StaticMeshBakeMode = FHoudiniCookParams::GetDefaultStaticMeshesCookMode();
     HoudiniCookParams.MaterialAndTextureBakeMode = FHoudiniCookParams::GetDefaultMaterialAndTextureCookMode();
 
-    if ( !FHoudiniLandscapeUtils::CreateAllLandscapes( HoudiniCookParams, FoundVolumes, LandscapeComponents, NewLandscapes ) )
+    if ( !FHoudiniLandscapeUtils::CreateAllLandscapes( HoudiniCookParams, LandscapesToUpdate, FoundVolumes, LandscapeComponents, NewLandscapes ) )
         return false;
 
     // The asset needs to be static in order to attach the landscapes to it
@@ -4596,16 +4610,19 @@ UHoudiniAssetComponent::CreateAllLandscapes( const TArray< FHoudiniGeoPartObject
 
         FHoudiniGeoPartObject Heightfield = IterLandscape.Key();
 
-        // Attach the new landscapes to ourselves
-        Landscape->AttachToComponent( this, FAttachmentTransformRules::KeepRelativeTransform );
+		if (!LandscapesToUpdate.Contains(Landscape))
+		{
+			// Attach the new landscapes to ourselves
+			Landscape->AttachRootComponentTo( this, NAME_None, EAttachLocation::KeepRelativeOffset );
 
-        // Update the materials from our assignement/replacement and the materials assigned on the previous version of this landscape
-        UpdateLandscapeMaterialsAssignementsAndReplacements( Landscape, Heightfield );
+			// Update the materials from our assignement/replacement and the materials assigned on the previous version of this landscape
+			UpdateLandscapeMaterialsAssignementsAndReplacements( Landscape, Heightfield );
 
-        // Replace any reference we might still have to the old landscape with the new one
-        ALandscape** OldLandscape = LandscapeComponents.Find( Heightfield );
-        if ( OldLandscape )
-            FHoudiniLandscapeUtils::UpdateOldLandscapeReference(*OldLandscape, Landscape);
+			// Replace any reference we might still have to the old landscape with the new one
+			ALandscape** OldLandscape = LandscapeComponents.Find( Heightfield );
+			if ( OldLandscape )
+				FHoudiniLandscapeUtils::UpdateOldLandscapeReference(*OldLandscape, Landscape);
+		}
     }
 
     // Replace the old landscapes with the new ones
@@ -4685,18 +4702,20 @@ void UHoudiniAssetComponent::UpdateLandscapeMaterialsAssignementsAndReplacements
     if ( Landscape->LandscapeHoleMaterial != LandscapeHoleMaterial )
         Landscape->LandscapeHoleMaterial = LandscapeHoleMaterial;
 
+	//JC: is this doing anything? if not it should be un-backported from the engine
     Landscape->UpdateAllComponentMaterialInstances();
 
-    /*
     // As UpdateAllComponentMaterialInstances() is not accessible to us, we'll try to access the Material's UProperty 
     // to trigger a fake Property change event that will call the Update function...
-    UProperty* FoundProperty = FindField< UProperty >(Landscape->GetClass(), (MaterialIdx == 0) ? TEXT("LandscapeMaterial") : TEXT("LandscapeHoleMaterial"));
-    if (FoundProperty)
-    {
-        FPropertyChangedEvent PropChanged(FoundProperty, EPropertyChangeType::ValueSet);
-        Landscape->PostEditChangeProperty(PropChanged);
-    }
-    */
+	for (int32 MaterialIdx = 0; MaterialIdx < 2; MaterialIdx++)
+	{
+		UProperty* FoundProperty = FindField< UProperty >(Landscape->GetClass(), (MaterialIdx == 0) ? TEXT("LandscapeMaterial") : TEXT("LandscapeHoleMaterial"));
+		if (FoundProperty)
+		{
+			FPropertyChangedEvent PropChanged(FoundProperty, EPropertyChangeType::ValueSet);
+			Landscape->PostEditChangeProperty(PropChanged);
+		}
+	}
 }
 
 bool
@@ -4730,7 +4749,7 @@ UHoudiniAssetComponent::ReplaceLandscapeInInputs( ALandscape* Old, ALandscape* N
     return bReturn;
 }
 
-#endif
+#endif // WITH_EDITOR
 
 void
 UHoudiniAssetComponent::ClearInstanceInputs()
@@ -4750,7 +4769,7 @@ UHoudiniAssetComponent::ClearCurves()
     {
         UHoudiniSplineComponent * SplineComponent = Iter.Value();
 
-        SplineComponent->DetachFromComponent( FDetachmentTransformRules::KeepRelativeTransform );
+		SplineComponent->DetachFromParent();
         SplineComponent->UnregisterComponent();
         SplineComponent->DestroyComponent();
     }
@@ -4769,6 +4788,9 @@ UHoudiniAssetComponent::ClearLandscapes()
 
         if ( !IsValid( HoudiniLandscape ) )
             continue;
+
+		if (LandscapesToUpdate.Contains(HoudiniLandscape))
+			continue;
 
         //HoudiniLandscape->DetachFromComponent( FDetachmentTransformRules::KeepRelativeTransform );
         HoudiniLandscape->UnregisterAllComponents();
@@ -4804,7 +4826,7 @@ UHoudiniAssetComponent::ClearHandles()
     {
         UHoudiniHandleComponent * HandleComponent = NameToComponent.Value;
 
-        HandleComponent->DetachFromComponent( FDetachmentTransformRules::KeepRelativeTransform );
+		HandleComponent->DetachFromParent();
         HandleComponent->UnregisterComponent();
         HandleComponent->DestroyComponent();
     }
@@ -4959,7 +4981,8 @@ UHoudiniAssetComponent::LocateStaticMeshComponent( const UStaticMesh * StaticMes
 
 bool
 UHoudiniAssetComponent::LocateInstancedStaticMeshComponents(
-    const UStaticMesh * StaticMesh, TArray< UInstancedStaticMeshComponent * > & Components ) const
+    const UStaticMesh * StaticMesh,
+	TArray< UInstancedStaticMeshComponent * > & Components)
 {
     Components.Empty();
 
@@ -5149,7 +5172,7 @@ UHoudiniAssetComponent::RemoveStaticMeshComponent( UStaticMesh * StaticMesh )
         UStaticMeshComponent * StaticMeshComponent = *FoundStaticMeshComponent;
         if ( StaticMeshComponent )
         {
-            StaticMeshComponent->DetachFromComponent( FDetachmentTransformRules::KeepRelativeTransform );
+			StaticMeshComponent->DetachFromParent();
             StaticMeshComponent->UnregisterComponent();
             StaticMeshComponent->DestroyComponent();
         }
@@ -5264,7 +5287,7 @@ UHoudiniAssetComponent::ReplaceMaterial(
         UStaticMeshComponent * StaticMeshComponent = LocateStaticMeshComponent( StaticMesh );
         if ( !StaticMeshComponent )
         {
-            TArray< UInstancedStaticMeshComponent * > InstancedStaticMeshComponents;
+			TArray< UInstancedStaticMeshComponent * > InstancedStaticMeshComponents;
             if ( !LocateInstancedStaticMeshComponents( StaticMesh, InstancedStaticMeshComponents ) )
                 return false;
         }
@@ -5388,7 +5411,7 @@ UHoudiniAssetComponent::CreateOrUpdateMaterialInstances()
             continue;
 
         // Replace the source material with the newly created/updated instance
-        for( int32 MatIdx = 0; MatIdx < StaticMesh->StaticMaterials.Num(); MatIdx++ )
+        for( int32 MatIdx = 0; MatIdx < StaticMesh->Materials.Num(); MatIdx++ )
         {
             // The "source" material we want to create an instance of should have already been assigned to the mesh
             UMaterialInstance* NewMaterialInstance = nullptr;
@@ -5403,7 +5426,7 @@ UHoudiniAssetComponent::CreateOrUpdateMaterialInstances()
             if (!NewMaterialInstance || !SourceMaterialInterface)
                 continue;
 
-            UMaterialInterface * SMMatInterface = StaticMesh->StaticMaterials[ MatIdx ].MaterialInterface;
+            UMaterialInterface * SMMatInterface = StaticMesh->Materials[ MatIdx ];
             if ( SMMatInterface != SourceMaterialInterface && SMMatInterface->GetBaseMaterial() != SourceMaterialInterface )
                 continue;
 
@@ -5414,7 +5437,7 @@ UHoudiniAssetComponent::CreateOrUpdateMaterialInstances()
             // Update the StaticMesh, StaticMeshComponents and Instanced Static Mesh Components
             StaticMesh->Modify(); 
             StaticMesh->PreEditChange( nullptr );
-            StaticMesh->StaticMaterials[ MatIdx ].MaterialInterface = NewMaterialInstance;            
+            StaticMesh->Materials[ MatIdx ] = NewMaterialInstance;
             StaticMesh->PostEditChange();
             StaticMesh->MarkPackageDirty();
 
@@ -5427,12 +5450,12 @@ UHoudiniAssetComponent::CreateOrUpdateMaterialInstances()
                 bMaterialReplaced = true;
             }
 
-            TArray< UInstancedStaticMeshComponent * > InstancedStaticMeshComponents;
+			TArray< UInstancedStaticMeshComponent * > InstancedStaticMeshComponents;
             if ( LocateInstancedStaticMeshComponents( StaticMesh, InstancedStaticMeshComponents ) )
             {
                 for ( int32 Idx = 0; Idx < InstancedStaticMeshComponents.Num(); ++Idx )
                 {
-                    UInstancedStaticMeshComponent * InstancedStaticMeshComponent = InstancedStaticMeshComponents[ Idx ];
+					UInstancedStaticMeshComponent * InstancedStaticMeshComponent = InstancedStaticMeshComponents[Idx];
                     if ( InstancedStaticMeshComponent )
                     {
                         InstancedStaticMeshComponent->Modify();
@@ -5819,6 +5842,6 @@ UHoudiniAssetComponent::ApplyHoudiniToolInputPreset()
     // Discard the tool presets after their first setup
     HoudiniToolInputPreset.Empty();
 }
-#endif
+#endif // WITH_EDITOR
 
 #undef LOCTEXT_NAMESPACE

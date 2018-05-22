@@ -22,7 +22,7 @@
 */
 
 #pragma once
-#include "ObjectMacros.h"
+#include "Object.h"
 #include "Components/ActorComponent.h"
 #include "Components/StaticMeshComponent.h"
 

@@ -35,8 +35,8 @@
 #include "HoudiniEngineRuntimePrivatePCH.h"
 
 
-UHoudiniAssetComponentMaterials::UHoudiniAssetComponentMaterials( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetComponentMaterials::UHoudiniAssetComponentMaterials( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
     , HoudiniAssetComponentMaterialsFlagsPacked( 0u )
 {}
 
@@ -106,10 +106,10 @@ UHoudiniAssetComponentMaterials::Duplicate( class UHoudiniAssetComponent* InOute
         UStaticMesh* NewSM = Cast<UStaticMesh>( ReplacementPair.Value );
         if( OriginalSM && NewSM )
         {
-            for( int32 Ix = 0; Ix < OriginalSM->StaticMaterials.Num(); ++Ix )
+            for( int32 Ix = 0; Ix < OriginalSM->Materials.Num(); ++Ix )
             {
-                MatReplacements.Add( OriginalSM->StaticMaterials[ Ix ].MaterialInterface,
-                    NewSM->StaticMaterials[ Ix ].MaterialInterface);
+                MatReplacements.Add( OriginalSM->Materials[ Ix ],
+                    NewSM->Materials[ Ix ]);
             }
         }
     }

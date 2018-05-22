@@ -44,8 +44,8 @@ GetTypeHash( const UHoudiniAssetParameter * HoudiniAssetParameter )
     return 0;
 }
 
-UHoudiniAssetParameter::UHoudiniAssetParameter( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetParameter::UHoudiniAssetParameter( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
     , PrimaryObject( nullptr )
     , ParentParameter( nullptr )
     , NodeId( -1 )

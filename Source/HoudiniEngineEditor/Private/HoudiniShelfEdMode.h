@@ -25,7 +25,7 @@
 
 //#include "UnrealEd.h" 
 #include "Editor.h"
-#include "EdMode.h"
+#include "EditorModes.h"
 #include "Toolkits/BaseToolkit.h"
 
 class FHoudiniShelfEdMode : public FEdMode

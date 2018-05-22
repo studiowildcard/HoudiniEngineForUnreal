@@ -32,7 +32,7 @@
 #pragma once
 
 #include "HoudiniGeoPartObject.h"
-#include "Landscape.h"
+#include "Runtime/Engine/Classes/Landscape/Landscape.h"
 
 struct FHoudiniCookParams;
 
@@ -47,6 +47,7 @@ struct HOUDINIENGINERUNTIME_API FHoudiniLandscapeUtils
         // Creates all the landscapes/layers from the volume array
         static bool CreateAllLandscapes(
             FHoudiniCookParams& HoudiniCookParams,
+			const TArray<ALandscape*>& LandscapesToUpdate,
             const TArray< FHoudiniGeoPartObject > & FoundVolumes,
             TMap< FHoudiniGeoPartObject, ALandscape * >& Landscapes,
             TMap< FHoudiniGeoPartObject, ALandscape * >& NewLandscapes,
@@ -60,6 +61,14 @@ struct HOUDINIENGINERUNTIME_API FHoudiniLandscapeUtils
             const int32& XSize, const int32& YSize,
             const int32& NumSectionPerLandscapeComponent, const int32& NumQuadsPerLandscapeSection,
             UMaterialInterface* LandscapeMaterial, UMaterialInterface* LandscapeHoleMaterial );
+
+		// Update an existing landscape
+		static bool UpdateLandscape(
+			ALandscape* ExistingLandscape,
+			const TArray< uint16 >& IntHeightData,
+			const TArray< FLandscapeImportLayerInfo >& ImportLayerInfos,
+			int32 XSize, int32 YSize,
+			int32 NumSectionPerLandscapeComponent, int32 NumQuadsPerLandscapeSection);
 
         // Returns the materials assigned to the heightfield
         static void GetHeightFieldLandscapeMaterials(

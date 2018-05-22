@@ -27,23 +27,23 @@
 #include "HoudiniEngineRuntimePrivatePCH.h"
 #if WITH_EDITOR
 #include "LevelEditorViewport.h"
-#include "MeshPaintHelpers.h"
+//#include "MeshPaintHelpers.h"
 #endif
 
 #include "Internationalization.h"
 #define LOCTEXT_NAMESPACE HOUDINI_LOCTEXT_NAMESPACE 
 
-UHoudiniMeshSplitInstancerComponent::UHoudiniMeshSplitInstancerComponent( const FObjectInitializer& ObjectInitializer )
-: Super( ObjectInitializer )
+UHoudiniMeshSplitInstancerComponent::UHoudiniMeshSplitInstancerComponent( const class FPostConstructInitializeProperties& PCIP )
+: Super( PCIP )
 , InstancedMesh( nullptr )
 {
 }
 
 void
-UHoudiniMeshSplitInstancerComponent::OnComponentDestroyed( bool bDestroyingHierarchy )
+UHoudiniMeshSplitInstancerComponent::OnComponentDestroyed()
 {
     ClearInstances();
-    Super::OnComponentDestroyed( bDestroyingHierarchy );
+    Super::OnComponentDestroyed();
 }
 
 void
@@ -63,7 +63,7 @@ UHoudiniMeshSplitInstancerComponent::AddReferencedObjects( UObject * InThis, FRe
     if ( UHoudiniMeshSplitInstancerComponent * This = Cast< UHoudiniMeshSplitInstancerComponent >( InThis ) )
     {
         Collector.AddReferencedObject( This->InstancedMesh, This );
-	Collector.AddReferencedObject( This->OverrideMaterial, This );
+		Collector.AddReferencedObject( This->OverrideMaterial, This );
         Collector.AddReferencedObjects( This->Instances, This );
     }
 }
@@ -81,45 +81,47 @@ UHoudiniMeshSplitInstancerComponent::SetInstances( const TArray<FTransform>& Ins
 
         if( InstancedMesh )
         {
-	    TArray<FColor> InstanceColorOverride;
-	    InstanceColorOverride.SetNumUninitialized(InstancedColors.Num());
-	    for( int32 ix = 0; ix < InstancedColors.Num(); ++ix )
-	    {
-		InstanceColorOverride[ix] = InstancedColors[ix].GetClamped().ToFColor(false);
-	    }
+			TArray<FColor> InstanceColorOverride;
+			InstanceColorOverride.SetNumUninitialized(InstancedColors.Num());
+			for (int32 ix = 0; ix < InstancedColors.Num(); ++ix)
+			{
+				InstanceColorOverride[ix] = InstancedColors[ix].GetClamped().ToFColor(false);
+			}
 
             for( const FTransform& InstanceTransform : InstanceTransforms )
             {
-		UStaticMeshComponent* SMC = NewObject< UStaticMeshComponent >(
-		    GetOwner(), UStaticMeshComponent::StaticClass(),
-		    NAME_None, RF_Transactional);
+				UStaticMeshComponent* SMC = ConstructObject< UStaticMeshComponent >(
+					UStaticMeshComponent::StaticClass(), GetOwner(),
+					NAME_None, RF_Transactional);
 
-		SMC->SetRelativeTransform(InstanceTransform);
-		// Attach created static mesh component to this thing
-		SMC->AttachToComponent(this, FAttachmentTransformRules::KeepRelativeTransform);
+				SMC->SetRelativeTransform(InstanceTransform);
+				// Attach created static mesh component to this thing
+				SMC->AttachTo(this, NAME_None, EAttachLocation::KeepRelativeOffset);
 
-		SMC->SetStaticMesh(InstancedMesh);
-		SMC->SetVisibility(IsVisible());
-		SMC->SetMobility(Mobility);
-		if( OverrideMaterial )
-		{
-		    int32 MeshMaterialCount = InstancedMesh->StaticMaterials.Num();
-		    for( int32 Idx = 0; Idx < MeshMaterialCount; ++Idx )
-			SMC->SetMaterial(Idx, OverrideMaterial);
-		}
+				SMC->SetStaticMesh(InstancedMesh);
+				SMC->SetVisibility(IsVisible());
+				SMC->SetMobility(Mobility);
+				if( OverrideMaterial )
+				{
+					int32 MeshMaterialCount = InstancedMesh->Materials.Num();
+					for( int32 Idx = 0; Idx < MeshMaterialCount; ++Idx )
+					SMC->SetMaterial(Idx, OverrideMaterial);
+				}
 
-		// If we have override colors, apply them
-		int32 InstIndex = Instances.Num();
-		if( InstanceColorOverride.IsValidIndex(InstIndex) )
-		{
-		    MeshPaintHelpers::FillVertexColors(SMC, InstanceColorOverride[InstIndex], true);
-		    //FIXME: How to get rid of the warning about fixup vertex colors on load?
-		    //SMC->FixupOverrideColorsIfNecessary();
-		}
+				// If we have override colors, apply them
+				int32 InstIndex = Instances.Num();
+				if( InstanceColorOverride.IsValidIndex(InstIndex) )
+				{
+					//JC: fixme
+					HOUDINI_LOG_ERROR( TEXT("%s: Failed to fill vertex colors; ask Judd to fix this if required") );
+					//MeshPaintHelpers::FillVertexColors(SMC, InstanceColorOverride[InstIndex], true);
+					//FIXME: How to get rid of the warning about fixup vertex colors on load?
+					//SMC->FixupOverrideColorsIfNecessary();
+				}
 
-		SMC->RegisterComponent();
+				SMC->RegisterComponent();
 
-		Instances.Add(SMC);
+				Instances.Add(SMC);
             }
         }
         else

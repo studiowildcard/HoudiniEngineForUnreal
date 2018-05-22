@@ -55,12 +55,12 @@ public:
 
     /** Helper for baking to actors */
     static TArray< AActor* > BakeHoudiniActorToActors_StaticMeshes( UHoudiniAssetComponent * HoudiniAssetComponent,
-        TMap< const UStaticMeshComponent*, FHoudiniGeoPartObject >& SMComponentToPart );
+		TMap< const UStaticMeshComponent*, FHoudiniGeoPartObject >& SMComponentToPart, bool bCookMode = false, ULevel* OverrideLevel = nullptr);
     /** Helper for baking to actors */
     static TArray< AActor* > BakeHoudiniActorToActors_InstancedActors( UHoudiniAssetComponent * HoudiniAssetComponent,
-        TMap< const class UHoudiniInstancedActorComponent*, FHoudiniGeoPartObject >& ComponentToPart );
+		TMap< const UActorComponent*, FHoudiniGeoPartObject >& ComponentToPart, bool bCookMode = false, ULevel* OverrideLevel = nullptr);
     static TArray< AActor* > BakeHoudiniActorToActors_SplitMeshInstancers(UHoudiniAssetComponent * HoudiniAssetComponent,
-        TMap<const class UHoudiniMeshSplitInstancerComponent *, FHoudiniGeoPartObject> SplitMeshInstancerComponentToPart);
+		TMap<const class UHoudiniMeshSplitInstancerComponent *, FHoudiniGeoPartObject> SplitMeshInstancerComponentToPart, bool bCookMode = false, ULevel* OverrideLevel = nullptr);
     /** Helper for baking an SM only if necessary */
     static void CheckedBakeStaticMesh(
         class UHoudiniAssetComponent* HoudiniAssetComponent, TMap< const UStaticMesh*, UStaticMesh* >& OriginalToBakedMesh,

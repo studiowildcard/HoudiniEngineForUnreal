@@ -23,11 +23,12 @@
 
 #pragma once
 #include "HoudiniAssetParameter.h"
-#include "CoreMinimal.h"
+#include "Core.h"
 #include "TimerManager.h"
 #include "GameFramework/Actor.h"
 #if WITH_EDITOR
 #include "Styling/SlateTypes.h"
+#include "SCheckBox.h"
 #include "Input/Reply.h"
 #endif
 #include "HoudiniAssetInput.generated.h"
@@ -374,76 +375,76 @@ class HOUDINIENGINERUNTIME_API UHoudiniAssetInput : public UHoudiniAssetParamete
 #if WITH_EDITOR
 
         /** Check if state of landscape selection checkbox has changed. **/
-        void CheckStateChangedExportOnlySelected( ECheckBoxState NewState );
+        void CheckStateChangedExportOnlySelected( ESlateCheckBoxState::Type NewState );
 
         /** Return checked state of landscape selection checkbox. **/
-        ECheckBoxState IsCheckedExportOnlySelected() const;
+        ESlateCheckBoxState::Type IsCheckedExportOnlySelected() const;
 
         /** Check if state of landscape auto selection checkbox has changed. **/
-        void CheckStateChangedAutoSelectLandscape(ECheckBoxState NewState);
+        void CheckStateChangedAutoSelectLandscape(ESlateCheckBoxState::Type NewState);
 
         /** Return checked state of landscape auto selection checkbox. **/
-        ECheckBoxState IsCheckedAutoSelectLandscape() const;
+        ESlateCheckBoxState::Type IsCheckedAutoSelectLandscape() const;
 
         /** Check if state of landscape curves checkbox has changed. **/
-        void CheckStateChangedExportCurves( ECheckBoxState NewState );
+        void CheckStateChangedExportCurves( ESlateCheckBoxState::Type NewState );
 
         /** Return checked state of landscape curves checkbox. **/
-        ECheckBoxState IsCheckedExportCurves() const;
+        ESlateCheckBoxState::Type IsCheckedExportCurves() const;
 
         /** Check if the state of the export landscape as mesh checkbox has changed. **/
-        void CheckStateChangedExportAsMesh( ECheckBoxState NewState );
+        void CheckStateChangedExportAsMesh( ESlateCheckBoxState::Type NewState );
 
         /** Return checked state of the export landscape as mesh checkbox. **/
-        ECheckBoxState IsCheckedExportAsMesh() const;
+        ESlateCheckBoxState::Type IsCheckedExportAsMesh() const;
 
         /** Check if the state of the export landscape as heightfield checkbox has changed. **/
-        void CheckStateChangedExportAsHeightfield( ECheckBoxState NewState );
+        void CheckStateChangedExportAsHeightfield( ESlateCheckBoxState::Type NewState );
 
         /** Return checked state of the export landscape as heightfield checkbox. **/
-        ECheckBoxState IsCheckedExportAsHeightfield() const;
+        ESlateCheckBoxState::Type IsCheckedExportAsHeightfield() const;
 
         /** Check if the state of the export landscape as points checkbox has changed. **/
-        void CheckStateChangedExportAsPoints( ECheckBoxState NewState );
+        void CheckStateChangedExportAsPoints( ESlateCheckBoxState::Type NewState );
 
         /** Return checked state of the export landscape as points checkbox. **/
-        ECheckBoxState IsCheckedExportAsPoints() const;
+        ESlateCheckBoxState::Type IsCheckedExportAsPoints() const;
 
         /** Check if state of landscape materials checkbox has changed. **/
-        void CheckStateChangedExportMaterials( ECheckBoxState NewState );
+        void CheckStateChangedExportMaterials( ESlateCheckBoxState::Type NewState );
 
         /** Return checked state of landscape materials checkbox. **/
-        ECheckBoxState IsCheckedExportMaterials() const;
+        ESlateCheckBoxState::Type IsCheckedExportMaterials() const;
 
         /** Check if state of landscape lighting checkbox has changed. **/
-        void CheckStateChangedExportLighting( ECheckBoxState NewState );
+        void CheckStateChangedExportLighting( ESlateCheckBoxState::Type NewState );
 
         /** Return checked state of landscape lighting checkbox. **/
-        ECheckBoxState IsCheckedExportLighting() const;
+        ESlateCheckBoxState::Type IsCheckedExportLighting() const;
 
         /** Check if state of landscape normalized uv checkbox has changed. **/
-        void CheckStateChangedExportNormalizedUVs( ECheckBoxState NewState );
+        void CheckStateChangedExportNormalizedUVs( ESlateCheckBoxState::Type NewState );
 
         /** Return checked state of landscape normalized uv checkbox. **/
-        ECheckBoxState IsCheckedExportNormalizedUVs() const;
+        ESlateCheckBoxState::Type IsCheckedExportNormalizedUVs() const;
 
         /** Check if state of landscape tile uv checkbox has changed. **/
-        void CheckStateChangedExportTileUVs( ECheckBoxState NewState );
+        void CheckStateChangedExportTileUVs( ESlateCheckBoxState::Type NewState );
 
         /** Return checked state of landscape tile uv checkbox. **/
-        ECheckBoxState IsCheckedExportTileUVs() const;
+        ESlateCheckBoxState::Type IsCheckedExportTileUVs() const;
 
         /** Check if state of the transform type checkbox has changed. **/
-        void CheckStateChangedKeepWorldTransform( ECheckBoxState NewState );
+        void CheckStateChangedKeepWorldTransform(ESlateCheckBoxState::Type NewState);
 
         /** Return checked state of transform type checkbox. **/
-        ECheckBoxState IsCheckedKeepWorldTransform() const;
+        ESlateCheckBoxState::Type IsCheckedKeepWorldTransform() const;
 
         /** Check if state of the export all LODs checkbox has changed. **/
-        void CheckStateChangedExportAllLODs( ECheckBoxState NewState );
+		void CheckStateChangedExportAllLODs(ESlateCheckBoxState::Type NewState);
 
         /** Return checked state of export LOD checkbox. **/
-        ECheckBoxState IsCheckedExportAllLODs() const;
+		ESlateCheckBoxState::Type IsCheckedExportAllLODs() const;
 
         /** Handler for landscape recommit button. **/
         FReply OnButtonClickRecommit();
@@ -467,10 +468,10 @@ class HOUDINIENGINERUNTIME_API UHoudiniAssetInput : public UHoudiniAssetParamete
         FReply OnResetSplineResolutionClicked();
 
         /** Check if state of the transform type checkbox has changed. **/
-        void CheckStateChangedPackBeforeMerge( ECheckBoxState NewState );
+        void CheckStateChangedPackBeforeMerge( ESlateCheckBoxState::Type NewState );
 
         /** Return checked state of landscape tile uv checkbox. **/
-        ECheckBoxState IsCheckedPackBeforeMerge() const;
+        ESlateCheckBoxState::Type IsCheckedPackBeforeMerge() const;
 
         /** Callbacks for geo array UI buttons */
         void OnInsertGeo( int32 AtIndex );

@@ -31,8 +31,8 @@
 #include "Internationalization.h"
 #define LOCTEXT_NAMESPACE HOUDINI_LOCTEXT_NAMESPACE 
 
-UHoudiniAssetParameterMultiparm::UHoudiniAssetParameterMultiparm( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetParameterMultiparm::UHoudiniAssetParameterMultiparm( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
     , MultiparmValue( 0 )
     , LastModificationType( RegularValueChange )
     , LastRemoveAddInstanceIndex( -1 )
@@ -55,8 +55,8 @@ UHoudiniAssetParameterMultiparm::Create(
         }
     }
 
-    UHoudiniAssetParameterMultiparm * HoudiniAssetParameterMultiparm = NewObject< UHoudiniAssetParameterMultiparm >(
-        Outer, UHoudiniAssetParameterMultiparm::StaticClass(), NAME_None, RF_Public | RF_Transactional );
+    UHoudiniAssetParameterMultiparm * HoudiniAssetParameterMultiparm = ConstructObject< UHoudiniAssetParameterMultiparm >(
+		UHoudiniAssetParameterMultiparm::StaticClass(), Outer, NAME_None, RF_Public | RF_Transactional);
 
     HoudiniAssetParameterMultiparm->CreateParameter( InPrimaryObject, InParentParameter, InNodeId, ParmInfo );
     return HoudiniAssetParameterMultiparm;

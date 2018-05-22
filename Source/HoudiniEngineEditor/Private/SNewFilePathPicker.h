@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
+#include "Core.h"
 #include "Misc/Attribute.h"
 #include "Fonts/SlateFontInfo.h"
 #include "Input/Reply.h"

@@ -35,8 +35,8 @@
 
 #define LOCTEXT_NAMESPACE HOUDINI_LOCTEXT_NAMESPACE 
 
-UHoudiniAssetParameterFile::UHoudiniAssetParameterFile( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetParameterFile::UHoudiniAssetParameterFile( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
     , Filters( TEXT( "" ) )
 {
     Values.Add( TEXT( "" ) );
@@ -60,8 +60,8 @@ UHoudiniAssetParameterFile::Create(
         }
     }
 
-    UHoudiniAssetParameterFile * HoudiniAssetParameterFile = NewObject< UHoudiniAssetParameterFile >(
-        Outer, UHoudiniAssetParameterFile::StaticClass(), NAME_None, RF_Public | RF_Transactional );
+	UHoudiniAssetParameterFile * HoudiniAssetParameterFile = ConstructObject<UHoudiniAssetParameterFile>(
+		UHoudiniAssetParameterFile::StaticClass(), Outer, NAME_None, RF_Public | RF_Transactional);
 
     HoudiniAssetParameterFile->CreateParameter( InPrimaryObject, InParentParameter, InNodeId, ParmInfo );
     return HoudiniAssetParameterFile;

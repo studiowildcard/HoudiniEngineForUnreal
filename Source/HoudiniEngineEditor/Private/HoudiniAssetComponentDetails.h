@@ -31,7 +31,7 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
+#include "Core.h"
 #include "HoudiniGeoPartObject.h"
 #include "DetailCategoryBuilder.h"
 #include "IDetailCustomization.h"
@@ -44,7 +44,7 @@
 struct FGeometry;
 struct FSlateBrush;
 struct FPointerEvent;
-struct FAssetData;
+class FAssetData;
 
 class UStaticMesh;
 class IDetailLayoutBuilder;
@@ -208,39 +208,39 @@ class FHoudiniAssetComponentDetails : public IDetailCustomization
         FReply OnResetHoudiniAssetClicked();
 
         /** Checks whether checkbox is checked. **/
-        ECheckBoxState IsCheckedComponentSettingCooking(
+        ESlateCheckBoxState::Type IsCheckedComponentSettingCooking(
             UHoudiniAssetComponent * HoudiniAssetComponent ) const;
 
-        ECheckBoxState IsCheckedComponentSettingUploadTransform(
+        ESlateCheckBoxState::Type IsCheckedComponentSettingUploadTransform(
             UHoudiniAssetComponent * HoudiniAssetComponent ) const;
 
-        ECheckBoxState IsCheckedComponentSettingTransformCooking(
+        ESlateCheckBoxState::Type IsCheckedComponentSettingTransformCooking(
             UHoudiniAssetComponent * HoudiniAssetComponent ) const;
 
-        ECheckBoxState IsCheckedComponentSettingUseHoudiniMaterials(
+        ESlateCheckBoxState::Type IsCheckedComponentSettingUseHoudiniMaterials(
             UHoudiniAssetComponent * HoudiniAssetComponent ) const;
 
-        ECheckBoxState IsCheckedComponentSettingCookingTriggersDownstreamCooks(
+        ESlateCheckBoxState::Type IsCheckedComponentSettingCookingTriggersDownstreamCooks(
             UHoudiniAssetComponent * HoudiniAssetComponent ) const;
 
         /** Handle change in Checkbox. **/
         void CheckStateChangedComponentSettingCooking(
-            ECheckBoxState NewState, UHoudiniAssetComponent * HoudiniAssetComponent );
+            ESlateCheckBoxState::Type NewState, UHoudiniAssetComponent * HoudiniAssetComponent );
 
         void CheckStateChangedComponentSettingUploadTransform(
-            ECheckBoxState NewState,
+            ESlateCheckBoxState::Type NewState,
             UHoudiniAssetComponent * HoudiniAssetComponent );
 
         void CheckStateChangedComponentSettingTransformCooking(
-            ECheckBoxState NewState,
+            ESlateCheckBoxState::Type NewState,
             UHoudiniAssetComponent * HoudiniAssetComponent );
 
         void CheckStateChangedComponentSettingUseHoudiniMaterials(
-            ECheckBoxState NewState,
+            ESlateCheckBoxState::Type NewState,
             UHoudiniAssetComponent * HoudiniAssetComponent );
 
         void CheckStateChangedComponentSettingCookingTriggersDownstreamCooks(
-            ECheckBoxState NewState,
+            ESlateCheckBoxState::Type NewState,
             UHoudiniAssetComponent * HoudiniAssetComponent );
 
     private:

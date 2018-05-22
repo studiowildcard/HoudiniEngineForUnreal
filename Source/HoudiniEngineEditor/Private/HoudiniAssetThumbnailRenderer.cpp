@@ -30,8 +30,8 @@
 #include "SceneInterface.h"
 #include "SceneView.h"
 
-UHoudiniAssetThumbnailRenderer::UHoudiniAssetThumbnailRenderer( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetThumbnailRenderer::UHoudiniAssetThumbnailRenderer( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
     , ThumbnailScene( nullptr )
 {}
 

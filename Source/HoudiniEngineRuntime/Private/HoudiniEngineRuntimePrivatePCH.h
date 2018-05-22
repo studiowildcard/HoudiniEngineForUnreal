@@ -22,10 +22,11 @@
 */
 
 #pragma once
+#include "Core.h"
+#include "UObject/CoreNet.h"
 
 /** Unreal Editor headers. **/
 #if WITH_EDITOR
-#include "CoreMinimal.h"
 #include "ObjectTools.h"
 #include "AssetTypeActions_Base.h"
 #include "ComponentAssetBroker.h"
@@ -38,7 +39,7 @@
 #include "RawMesh.h"
 #include "Kismet2/KismetEditorUtilities.h"
 #include "IPluginManager.h"
-#include "ISettingsModule.h"
+#include "Settings.h"
 #include "DesktopPlatformModule.h"
 #include "Editor.h"
 #endif
@@ -48,6 +49,7 @@
 #include "Misc/Variant.h"
 #include "ModuleManager.h"
 #include "EngineModule.h"
+#include "Math/NumericLimits.h"
 #include "Engine/TextureDefines.h"
 #include "Engine/EngineTypes.h"
 #include "MaterialShared.h"
@@ -61,7 +63,7 @@
 #include "Components.h"
 #include "ComponentReregisterContext.h"
 #include "Engine/StaticMesh.h"
-#include "LandscapeProxy.h"
+//#include "LandscapeProxy.h"
 #include "LandscapeDataAccess.h"
 #include "Engine/Level.h"
 #include "Curves/CurveBase.h"

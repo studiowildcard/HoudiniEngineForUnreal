@@ -27,8 +27,9 @@
 #include "HoudiniGeoPartObject.h"
 #include "HoudiniCookHandler.h"
 #include "Engine/StaticMesh.h"
-#include "PhysicsEngine/AggregateGeom.h"
+#include "PhysicsEngine/BodySetup.h"
 #include "Engine/StaticMeshSocket.h"
+#include "Components/SplineComponent.h"
 
 class UStaticMesh;
 class UHoudiniAsset;
@@ -188,6 +189,54 @@ struct HOUDINIENGINERUNTIME_API UGenericAttribute
 
         return nullptr;
     }
+};
+
+struct HOUDINIENGINERUNTIME_API FSplineUtils
+{
+	static inline FVector GetLocalLocationAtSplinePoint(USplineComponent* spline, int32 n)
+	{
+		FVector location;
+		FVector _tangent; //JC: unused
+		spline->GetLocalLocationAndTangentAtSplinePoint(n, location, _tangent);
+		return location;
+	}
+
+	static inline FQuat GetWorldRotationAtSplinePoint(USplineComponent* spline, int32 n)
+	{
+		return spline->GetWorldRotationAtDistanceAlongSpline(spline->GetDistanceAlongSplineAtSplinePoint(n)).Quaternion();
+	}
+
+	static inline FVector GetScaleAtSplinePoint(USplineComponent* spline, int32 n)
+	{
+		//JC: do splines have point scales in UE4.5?
+		return FVector(1.0f, 1.0f, 1.0f);
+	}
+
+	static inline FTransform GetLocalTransformAtSplinePoint(USplineComponent* spline, int32 n)
+	{
+		//JC: double-check math
+		FVector location;
+		FVector _tangent;
+		spline->GetLocalLocationAndTangentAtSplinePoint(n, location, _tangent);
+		FQuat worldRot = spline->GetWorldRotationAtDistanceAlongSpline(spline->GetDistanceAlongSplineAtSplinePoint(n)).Quaternion();
+		return FTransform(worldRot, location, FVector(1.0f, 1.0f, 1.0f));
+	}
+
+	static inline FVector GetLocalLocationAtDistanceAlongSpline(USplineComponent* spline, float dist)
+	{
+		return spline->ComponentToWorld.InverseTransformPosition(spline->GetWorldLocationAtDistanceAlongSpline(dist));
+	}
+
+	static inline FQuat GetWorldRotationAtDistanceAlongSpline(USplineComponent* spline, float dist)
+	{
+		return spline->GetWorldRotationAtDistanceAlongSpline(dist).Quaternion();
+	}
+
+	static inline FVector GetScaleAtDistanceAlongSpline(USplineComponent* spline, float dist)
+	{
+		//JC: do splines have point scales in UE4.5?
+		return FVector(1.0f, 1.0f, 1.0f);
+	}
 };
 
 struct HOUDINIENGINERUNTIME_API FHoudiniEngineUtils
@@ -587,7 +636,7 @@ struct HOUDINIENGINERUNTIME_API FHoudiniEngineUtils
 
         /** Create helper array of material names, we use it for marshalling. **/
         static void CreateFaceMaterialArray(
-            const TArray< FStaticMaterial > & Materials,
+			const TArray< UMaterialInterface* > & Materials,
             const TArray< int32 > & FaceMaterialIndices,
             TArray< char * > & OutStaticMeshFaceMaterials );
 
@@ -625,4 +674,6 @@ struct HOUDINIENGINERUNTIME_API FHoudiniEngineUtils
 
         /** How many GUID symbols are used for package item name generation. **/
         static const int32 PackageGUIDItemNameLength;
+
+		static void ShowEditorNotification(const FString& message, bool bIsSuccess);
 };

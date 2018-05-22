@@ -25,8 +25,8 @@
 #include "HoudiniAssetParameterLabel.h"
 #include "HoudiniEngineRuntimePrivatePCH.h"
 
-UHoudiniAssetParameterLabel::UHoudiniAssetParameterLabel( const FObjectInitializer& ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetParameterLabel::UHoudiniAssetParameterLabel(const class FPostConstructInitializeProperties& PCIP)
+	: Super(PCIP)
 {}
 
 UHoudiniAssetParameterLabel *
@@ -46,8 +46,8 @@ UHoudiniAssetParameterLabel::Create(
         }
     }
 
-    UHoudiniAssetParameterLabel * HoudiniAssetParameterLabel = NewObject< UHoudiniAssetParameterLabel >(
-        Outer, UHoudiniAssetParameterLabel::StaticClass(), NAME_None, RF_Public | RF_Transactional );
+    UHoudiniAssetParameterLabel * HoudiniAssetParameterLabel = ConstructObject< UHoudiniAssetParameterLabel >(
+		UHoudiniAssetParameterLabel::StaticClass(), Outer, NAME_None, RF_Public | RF_Transactional);
 
     HoudiniAssetParameterLabel->CreateParameter( InPrimaryObject, InParentParameter, InNodeId, ParmInfo );
     return HoudiniAssetParameterLabel;

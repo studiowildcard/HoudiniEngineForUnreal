@@ -36,8 +36,8 @@
 #include "HoudiniEngine.h"
 #include "HoudiniPluginSerializationVersion.h"
 
-UHoudiniAttributeDataComponent::UHoudiniAttributeDataComponent( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAttributeDataComponent::UHoudiniAttributeDataComponent( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
 {
 }
 

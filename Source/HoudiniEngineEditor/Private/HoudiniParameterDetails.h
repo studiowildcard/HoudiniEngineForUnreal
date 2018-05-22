@@ -53,7 +53,7 @@ struct FHoudiniParameterDetails
     static void CreateWidgetChoice( TSharedPtr< SVerticalBox > VerticalBox, class UHoudiniAssetParameterChoice& InParam );
     static void CreateWidgetToggle( TSharedPtr< SVerticalBox > VerticalBox, class UHoudiniAssetParameterToggle& InParam );
 
-    static FText GetParameterTooltip( UHoudiniAssetParameter* InParam );
+    static FString GetParameterTooltip( UHoudiniAssetParameter* InParam );
 
 private:
     static FMenuBuilder Helper_CreateCustomActorPickerWidget( UHoudiniAssetInput& InParam, const TAttribute<FText>& HeadingText, const bool& bShowCurrentSelectionSection );

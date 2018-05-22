@@ -227,21 +227,24 @@ FHoudiniAssetTypeActions::ExecuteRebuildAllInstances(TArray< TWeakObjectPtr< UHo
 void
 FHoudiniAssetTypeActions::ExecuteFindInExplorer( TArray< TWeakObjectPtr< UHoudiniAsset > > HoudiniAssets )
 {
+#if WITH_EDITORONLY_DATA
     for ( auto ObjIt = HoudiniAssets.CreateConstIterator(); ObjIt; ++ObjIt )
     {
         UHoudiniAsset * HoudiniAsset = ( *ObjIt ).Get();
         if ( HoudiniAsset && HoudiniAsset->AssetImportData )
         {
-            const FString SourceFilePath = HoudiniAsset->AssetImportData->GetFirstFilename();
+            const FString SourceFilePath = HoudiniAsset->AssetImportData->SourceFilePath;
             if ( SourceFilePath.Len() && IFileManager::Get().FileSize( *SourceFilePath ) != INDEX_NONE )
                 return FPlatformProcess::ExploreFolder( *SourceFilePath );
         }
     }
+#endif
 }
 
 void
 FHoudiniAssetTypeActions::ExecuteOpenInHoudini( TArray< TWeakObjectPtr< UHoudiniAsset > > HoudiniAssets )
 {
+#if WITH_EDITORONLY_DATA
     if ( !FHoudiniEngine::IsInitialized() )
         return;
     
@@ -252,7 +255,7 @@ FHoudiniAssetTypeActions::ExecuteOpenInHoudini( TArray< TWeakObjectPtr< UHoudini
     if ( !HoudiniAsset || !( HoudiniAsset->AssetImportData ) )
         return;
 
-    FString SourceFilePath = HoudiniAsset->AssetImportData->GetFirstFilename();
+	FString SourceFilePath = HoudiniAsset->AssetImportData->SourceFilePath;
     if ( !SourceFilePath.Len() || IFileManager::Get().FileSize(*SourceFilePath) == INDEX_NONE )
         return;
     
@@ -274,13 +277,22 @@ FHoudiniAssetTypeActions::ExecuteOpenInHoudini( TArray< TWeakObjectPtr< UHoudini
     FString LibHAPILocation = FHoudiniEngine::Get().GetLibHAPILocation();
     FString HoudiniLocation = LibHAPILocation + "/hview";
 
+	const FString TempDir = FPaths::GameSavedDir() / TEXT("HoudiniTemp");
+
+	// make sure the temp dir exists
+	if (!FPaths::DirectoryExists(TempDir))
+	{
+		IFileManager::Get().MakeDirectory(*TempDir);
+	}
+
     FPlatformProcess::CreateProc(
         HoudiniLocation.GetCharArray().GetData(),
         SourceFilePath.GetCharArray().GetData(),
         true, false, false,
         nullptr, 0,
-        FPlatformProcess::UserTempDir(),
-        nullptr, nullptr );
+        *TempDir,
+        nullptr );
+#endif
 }
 
 void
@@ -314,7 +326,7 @@ FHoudiniAssetTypeActions::ExecuteApplyAssetToSelection( TArray< TWeakObjectPtr< 
         return;
 
     // Creating a temporary tool for the selected asset
-    TSoftObjectPtr<UHoudiniAsset> HoudiniAssetPtr( HoudiniAsset );
+    TAssetPtr<UHoudiniAsset> HoudiniAssetPtr( HoudiniAsset );
     FHoudiniTool HoudiniTool( HoudiniAssetPtr, FText::FromString( HoudiniAsset->GetName() ), Type, FText(), NULL, FString() );
 
     SHoudiniToolPalette::InstantiateHoudiniTool( &HoudiniTool );

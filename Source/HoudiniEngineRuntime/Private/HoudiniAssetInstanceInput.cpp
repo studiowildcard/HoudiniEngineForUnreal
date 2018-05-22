@@ -43,8 +43,8 @@
 #define LOCTEXT_NAMESPACE HOUDINI_LOCTEXT_NAMESPACE 
 
 
-UHoudiniAssetInstanceInput::UHoudiniAssetInstanceInput( const FObjectInitializer& ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetInstanceInput::UHoudiniAssetInstanceInput(const class FPostConstructInitializeProperties& PCIP)
+	: Super(PCIP)
     , ObjectToInstanceId( -1 )
 {
     Flags.HoudiniAssetInstanceInputFlagsPacked = 0;
@@ -67,9 +67,9 @@ UHoudiniAssetInstanceInput::Create(
     if ( !Flags.bIsAttributeInstancer && !Flags.bAttributeInstancerOverride && ObjectToInstance == -1 && !Flags.bIsPackedPrimitiveInstancer )
         return nullptr;
 
-    NewInstanceInput = NewObject< UHoudiniAssetInstanceInput >(
-        InPrimaryObject, 
+	NewInstanceInput = ConstructObject< UHoudiniAssetInstanceInput >(
         UHoudiniAssetInstanceInput::StaticClass(),
+		InPrimaryObject,
         NAME_None, RF_Public | RF_Transactional );
 
     NewInstanceInput->PrimaryObject = InPrimaryObject;
@@ -479,7 +479,7 @@ UHoudiniAssetInstanceInput::CreateInstanceInputField(
             HoudiniAssetInstanceInputField->SetGeoPartObject( InHoudiniGeoPartObject );
 
             // Remove item from old list.
-            InstanceInputFields.RemoveSingleSwap( HoudiniAssetInstanceInputField, false );
+            InstanceInputFields.RemoveSingleSwap( HoudiniAssetInstanceInputField );
 
             TArray< int > MatchingIndices;
 
@@ -594,7 +594,7 @@ UHoudiniAssetInstanceInput::CreateInstanceInputField(
     if ( CandidateFields.Num() > 0 )
     {
         HoudiniAssetInstanceInputField = CandidateFields[ 0 ];
-        InstanceInputFields.RemoveSingleSwap( HoudiniAssetInstanceInputField, false );
+        InstanceInputFields.RemoveSingleSwap( HoudiniAssetInstanceInputField );
 
         TArray< int32 > MatchingIndices;
 
@@ -800,8 +800,8 @@ UHoudiniAssetInstanceInput::CloneComponentsAndAttachToActor( AActor * Actor )
         for ( int32 VariationIdx = 0;
             VariationIdx < HoudiniAssetInstanceInputField->InstanceVariationCount(); VariationIdx++ )
         {
-            UInstancedStaticMeshComponent * ISMC =
-                Cast<UInstancedStaticMeshComponent>( HoudiniAssetInstanceInputField->GetInstancedComponent( VariationIdx ) );
+			UInstancedStaticMeshComponent * ISMC =
+				Cast<UInstancedStaticMeshComponent>(HoudiniAssetInstanceInputField->GetInstancedComponent(VariationIdx));
             UHoudiniMeshSplitInstancerComponent * MSIC =
                 Cast<UHoudiniMeshSplitInstancerComponent>( HoudiniAssetInstanceInputField->GetInstancedComponent( VariationIdx ) );
 
@@ -832,12 +832,12 @@ UHoudiniAssetInstanceInput::CloneComponentsAndAttachToActor( AActor * Actor )
                         {
                             if( InstancedActor )
                             {
-                                UChildActorComponent* CAC = NewObject< UChildActorComponent >( Actor, UChildActorComponent::StaticClass(), NAME_None, RF_Public );
-                                Actor->AddInstanceComponent( CAC );
-                                CAC->SetChildActorClass( ActorClass );
+								UChildActorComponent* CAC = ConstructObject< UChildActorComponent >(UChildActorComponent::StaticClass(), Actor, NAME_None, RF_Public);
+								Actor->AddOwnedComponent( CAC );
+								CAC->ChildActorClass = ActorClass;
                                 CAC->RegisterComponent();
                                 CAC->SetWorldTransform( InstancedActor->GetTransform() );
-                                CAC->AttachToComponent( RootComponent, FAttachmentTransformRules::KeepWorldTransform );
+								CAC->AttachTo(RootComponent, NAME_None, EAttachLocation::KeepWorldPosition);
                             }
                         }
                     }
@@ -847,12 +847,12 @@ UHoudiniAssetInstanceInput::CloneComponentsAndAttachToActor( AActor * Actor )
                         {
                             if( InstancedActor )
                             {
-                                UParticleSystemComponent* PSC = NewObject< UParticleSystemComponent >( Actor, UParticleSystemComponent::StaticClass(), NAME_None, RF_Public );
-                                Actor->AddInstanceComponent( PSC );
+								UParticleSystemComponent* PSC = ConstructObject< UParticleSystemComponent >(UParticleSystemComponent::StaticClass(), Actor, NAME_None, RF_Public);
+								Actor->AddOwnedComponent( PSC );
                                 PSC->SetTemplate( StaticCast<UParticleSystem*>( IAC->InstancedAsset ) );
                                 PSC->RegisterComponent();
                                 PSC->SetWorldTransform( InstancedActor->GetTransform() );
-                                PSC->AttachToComponent( RootComponent, FAttachmentTransformRules::KeepWorldTransform );
+								PSC->AttachTo(RootComponent, NAME_None, EAttachLocation::KeepWorldPosition);
                             }
                         }
                     }
@@ -862,12 +862,12 @@ UHoudiniAssetInstanceInput::CloneComponentsAndAttachToActor( AActor * Actor )
                         {
                             if( InstancedActor )
                             {
-                                UAudioComponent* AC = NewObject< UAudioComponent >( Actor, UAudioComponent::StaticClass(), NAME_None, RF_Public );
-                                Actor->AddInstanceComponent( AC );
+								UAudioComponent* AC = ConstructObject< UAudioComponent >(UAudioComponent::StaticClass(), Actor, NAME_None, RF_Public);
+                                Actor->AddOwnedComponent( AC );
                                 AC->SetSound( StaticCast<USoundBase*>( IAC->InstancedAsset ) );
                                 AC->RegisterComponent();
                                 AC->SetWorldTransform( InstancedActor->GetTransform() );
-                                AC->AttachToComponent( RootComponent, FAttachmentTransformRules::KeepWorldTransform );
+								AC->AttachTo(RootComponent, NAME_None, EAttachLocation::KeepWorldPosition);
                             }
                         }
                     }
@@ -901,15 +901,10 @@ UHoudiniAssetInstanceInput::CloneComponentsAndAttachToActor( AActor * Actor )
                 UHierarchicalInstancedStaticMeshComponent * HISMC =
                     Cast<UHierarchicalInstancedStaticMeshComponent>( HoudiniAssetInstanceInputField->GetInstancedComponent( VariationIdx ) );
 
-                UInstancedStaticMeshComponent* DuplicatedComponent = nullptr;
-                if ( HISMC )
-                    DuplicatedComponent = NewObject< UHierarchicalInstancedStaticMeshComponent >(
-                        Actor, UHierarchicalInstancedStaticMeshComponent::StaticClass(), NAME_None, RF_Public );
-                else
-                    DuplicatedComponent = NewObject< UInstancedStaticMeshComponent >(
-                        Actor, UInstancedStaticMeshComponent::StaticClass(), NAME_None, RF_Public );
+				UHierarchicalInstancedStaticMeshComponent* DuplicatedComponent = ConstructObject< UHierarchicalInstancedStaticMeshComponent >(
+					UHierarchicalInstancedStaticMeshComponent::StaticClass(), Actor, NAME_None, RF_Public);
 
-                Actor->AddInstanceComponent( DuplicatedComponent );
+				Actor->AddOwnedComponent( DuplicatedComponent );
                 DuplicatedComponent->SetStaticMesh( OutStaticMesh );
 
                 // Reapply the uproperties modified by attributes on the duplicated component
@@ -926,7 +921,7 @@ UHoudiniAssetInstanceInput::CloneComponentsAndAttachToActor( AActor * Actor )
                 // Copy visibility.
                 DuplicatedComponent->SetVisibility( ISMC->IsVisible() );
 
-                DuplicatedComponent->AttachToComponent( RootComponent, FAttachmentTransformRules::KeepRelativeTransform );
+				DuplicatedComponent->AttachTo(RootComponent);
                 DuplicatedComponent->RegisterComponent();
                 DuplicatedComponent->GetBodyInstance()->bAutoWeld = false;
             }
@@ -938,9 +933,9 @@ UHoudiniAssetInstanceInput::CloneComponentsAndAttachToActor( AActor * Actor )
                     CompName.ReplaceInline( TEXT("StaticMeshComponent"), TEXT("StaticMesh") );
                     if( UStaticMeshComponent* NewSMC = DuplicateObject< UStaticMeshComponent >( OtherSMC, Actor, *CompName ) )
                     {
-                        NewSMC->SetupAttachment( RootComponent );
+                        NewSMC->AttachTo( RootComponent );
                         NewSMC->SetStaticMesh( OutStaticMesh );
-                        Actor->AddInstanceComponent( NewSMC );
+                        Actor->AddOwnedComponent( NewSMC );
                         NewSMC->SetWorldTransform( OtherSMC->GetComponentTransform() );
                         NewSMC->RegisterComponent();
                     }
@@ -1249,7 +1244,7 @@ UHoudiniAssetInstanceInput::CollectAllInstancedStaticMeshComponents(
                     UStaticMesh * UsedStaticMesh = Cast< UStaticMesh >( HoudiniAssetInstanceInputField->InstancedObjects[ IdxMesh ] );
                     if ( UsedStaticMesh == StaticMesh )
                     {
-                        UInstancedStaticMeshComponent* ISMC = Cast< UInstancedStaticMeshComponent >( HoudiniAssetInstanceInputField->InstancerComponents[ IdxMesh ] );
+						UInstancedStaticMeshComponent* ISMC = Cast<UInstancedStaticMeshComponent>(HoudiniAssetInstanceInputField->InstancerComponents[IdxMesh]);
                         Components.Add( ISMC );
                         bCollected = true;
                     }

@@ -34,7 +34,7 @@
 class AActor;
 class UStaticMesh;
 class UMaterialInterface;
-class UInstancedStaticMeshComponent;
+class UHierarchicalInstancedStaticMeshComponent;
 class UHoudiniAssetInstanceInputField;
 
 UCLASS()

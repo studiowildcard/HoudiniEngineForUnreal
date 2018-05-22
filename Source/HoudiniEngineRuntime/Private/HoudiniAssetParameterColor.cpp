@@ -30,8 +30,8 @@
 #include "Internationalization.h"
 #define LOCTEXT_NAMESPACE HOUDINI_LOCTEXT_NAMESPACE 
 
-UHoudiniAssetParameterColor::UHoudiniAssetParameterColor( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetParameterColor::UHoudiniAssetParameterColor( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
     , Color( FColor::White )
 {}
 
@@ -67,8 +67,8 @@ UHoudiniAssetParameterColor::Create(
         }
     }
 
-    UHoudiniAssetParameterColor * HoudiniAssetParameterColor = NewObject< UHoudiniAssetParameterColor >(
-        Outer, UHoudiniAssetParameterColor::StaticClass(), NAME_None, RF_Public | RF_Transactional );
+    UHoudiniAssetParameterColor * HoudiniAssetParameterColor = ConstructObject< UHoudiniAssetParameterColor >(
+		UHoudiniAssetParameterColor::StaticClass(), Outer, NAME_None, RF_Public | RF_Transactional);
 
     HoudiniAssetParameterColor->CreateParameter( InPrimaryObject, InParentParameter, InNodeId, ParmInfo );
     return HoudiniAssetParameterColor;

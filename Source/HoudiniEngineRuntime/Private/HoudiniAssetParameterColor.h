@@ -24,7 +24,7 @@
 #pragma once
 
 #include "HoudiniAssetParameter.h"
-#include "CoreMinimal.h"
+#include "Core.h"
 #include "HoudiniAssetParameterColor.generated.h"
 
 

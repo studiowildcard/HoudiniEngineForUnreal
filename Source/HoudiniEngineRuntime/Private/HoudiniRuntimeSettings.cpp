@@ -29,8 +29,8 @@
 #include "Internationalization.h"
 #define LOCTEXT_NAMESPACE HOUDINI_LOCTEXT_NAMESPACE 
 
-UHoudiniRuntimeSettings::UHoudiniRuntimeSettings( const FObjectInitializer & ObjectInitializer )
-: Super( ObjectInitializer )
+UHoudiniRuntimeSettings::UHoudiniRuntimeSettings( const class FPostConstructInitializeProperties& PCIP )
+: Super( PCIP )
 {
     /** Session options. **/
     SessionType = HRSST_InProcess;
@@ -334,8 +334,8 @@ void
 UHoudiniRuntimeSettings::SetMeshBuildSettings( FMeshBuildSettings & MeshBuildSettings, FRawMesh & RawMesh ) const
 {
     MeshBuildSettings.bRemoveDegenerates = bRemoveDegenerates;
-    MeshBuildSettings.bUseMikkTSpace = bUseMikkTSpace;
-    MeshBuildSettings.bBuildAdjacencyBuffer = bBuildAdjacencyBuffer;
+    //MeshBuildSettings.bUseMikkTSpace = bUseMikkTSpace;
+    //MeshBuildSettings.bBuildAdjacencyBuffer = bBuildAdjacencyBuffer;
     MeshBuildSettings.MinLightmapResolution = MinLightmapResolution;
     MeshBuildSettings.bUseFullPrecisionUVs = bUseFullPrecisionUVs;
     MeshBuildSettings.SrcLightmapIndex = SrcLightmapIndex;

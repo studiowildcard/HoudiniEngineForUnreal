@@ -32,9 +32,10 @@
 #include "HoudiniAsset.h"
 #include "HoudiniRuntimeSettings.h"
 
-#include "PlatformMisc.h"
+//#include "PlatformMisc.h"
+//#include "ScopeLock.h"
+#include "ThreadingBase.h"
 #include "PlatformFilemanager.h"
-#include "ScopeLock.h"
 #include "SlateApplication.h"
 #include "Materials/Material.h"
 
@@ -88,7 +89,9 @@ FHoudiniEngine::GetHoudiniDefaultMaterial() const
 TWeakObjectPtr<UHoudiniAsset>
 FHoudiniEngine::GetHoudiniBgeoAsset() const
 {
-    return HoudiniBgeoAsset;
+	//JC: Added assert here to determine if this ever even gets called
+	check(HoudiniBgeoAsset.IsValid() && "Bgeo import asset not found");
+	return HoudiniBgeoAsset;
 }
 
 bool
@@ -183,6 +186,7 @@ FHoudiniEngine::StartupModule()
     if ( HoudiniDefaultMaterial.IsValid() )
         HoudiniDefaultMaterial->AddToRoot();
 
+	//JC: the bgeo_import asset is a 4.18 asset with no source file, not sure what to do with this or if it's even needed
     // Create Houdini digital asset which is used for loading the bgeo files.
     HoudiniBgeoAsset = LoadObject< UHoudiniAsset >(
         nullptr, HAPI_UNREAL_RESOURCE_BGEO_IMPORT, nullptr, LOAD_None, nullptr );
@@ -194,30 +198,31 @@ FHoudiniEngine::StartupModule()
     if ( !IsRunningCommandlet() && !IsRunningDedicatedServer() )
     {
         // Create Houdini logo brush.
-        const TArray< TSharedRef< IPlugin > > Plugins = IPluginManager::Get().GetDiscoveredPlugins();
-        for ( auto PluginIt( Plugins.CreateConstIterator() ); PluginIt; ++PluginIt )
-        {
-            const TSharedRef< IPlugin > & Plugin = *PluginIt;
-            if ( Plugin->GetName() == TEXT( "HoudiniEngine" ) )
-            {
-                FString Icon128FilePath = Plugin->GetBaseDir() / TEXT( "Resources/Icon128.png" );
+		const TArray<FPluginStatus> Plugins = IPluginManager::Get().QueryStatusForAllPlugins();
+		for (auto PluginIt(Plugins.CreateConstIterator()); PluginIt; ++PluginIt)
+		{
+			const FPluginStatus& Plugin = *PluginIt;
 
-                if ( FPlatformFileManager::Get().GetPlatformFile().FileExists( *Icon128FilePath ) )
-                {
-                    const FName BrushName( *Icon128FilePath );
-                    const FIntPoint Size = FSlateApplication::Get().GetRenderer()->GenerateDynamicImageResource( BrushName );
+			if (Plugin.Name == TEXT("HoudiniEngine"))
+			{
+				FString Icon128FilePath = Plugin.PluginDirectory / TEXT("Resources/Icon128.png");
 
-                    if ( Size.X > 0 && Size.Y > 0 )
-                    {
-                        static const int32 ProgressIconSize = 32;
-                        HoudiniLogoBrush = MakeShareable( new FSlateDynamicImageBrush(
-                            BrushName, FVector2D( ProgressIconSize, ProgressIconSize ) ) );
-                    }
-                }
+				if (FPlatformFileManager::Get().GetPlatformFile().FileExists(*Icon128FilePath))
+				{
+					const FName BrushName(*Icon128FilePath);
+					const FIntPoint Size = FSlateApplication::Get().GetRenderer()->GenerateDynamicImageResource(BrushName);
 
-                break;
-            }
-        }
+					if (Size.X > 0 && Size.Y > 0)
+					{
+						static const int32 ProgressIconSize = 32;
+						HoudiniLogoBrush = MakeShareable(new FSlateDynamicImageBrush(
+							BrushName, FVector2D(ProgressIconSize, ProgressIconSize)));
+					}
+				}
+
+				break;
+			}
+		}
     }
 
     // Build and running versions match, we can perform HAPI initialization.
@@ -257,7 +262,11 @@ FHoudiniEngine::StartupModule()
             FPlatformMisc::SetEnvironmentVar( TEXT( "PATH" ), *ModifiedPath );
         };
 
-        switch ( HoudiniRuntimeSettings->SessionType.GetValue() )
+		//JC: runtime settings type is hardcoded. FIX THIS
+        //switch ( HoudiniRuntimeSettings->SessionType.GetValue() )
+
+		EHoudiniRuntimeSettingsSessionType sessionType = EHoudiniRuntimeSettingsSessionType::HRSST_Socket;
+		switch ( sessionType )
         {
             case EHoudiniRuntimeSettingsSessionType::HRSST_InProcess:
             {
@@ -540,7 +549,11 @@ FHoudiniEngine::CookNode(
 #if WITH_EDITOR
     // The meshes are already created but we need to create the landscape too
     if ( FoundVolumes.Num() > 0 )
-        bReturn = FHoudiniLandscapeUtils::CreateAllLandscapes( HoudiniCookParams, FoundVolumes, LandscapesIn, LandscapesOut, -200.0f, 200.0f );
+	{
+		HOUDINI_LOG_WARNING(TEXT("CreateAllLandscapes called without a houdini actor reference to get existing landscapes from"));
+		TArray<ALandscape*> existing;
+        bReturn = FHoudiniLandscapeUtils::CreateAllLandscapes( HoudiniCookParams, existing, FoundVolumes, LandscapesIn, LandscapesOut, -200.0f, 200.0f );
+	}
 #endif
 
     return bReturn;

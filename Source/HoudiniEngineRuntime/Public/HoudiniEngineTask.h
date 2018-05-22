@@ -24,7 +24,7 @@
 #pragma once
 
 #include "HoudiniApi.h"
-#include "CoreMinimal.h"
+#include "Core.h"
 #include "Misc/Guid.h"
 #include "UObject/WeakObjectPtr.h"
 

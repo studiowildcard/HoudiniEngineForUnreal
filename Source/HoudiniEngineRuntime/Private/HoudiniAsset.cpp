@@ -38,8 +38,8 @@
 const uint32
 UHoudiniAsset::PersistenceFormatVersion = 2u;
 
-UHoudiniAsset::UHoudiniAsset( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAsset::UHoudiniAsset( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
     , AssetFileName( TEXT( "" ) )
     , AssetBytes( nullptr )
     , AssetBytesCount( 0 )

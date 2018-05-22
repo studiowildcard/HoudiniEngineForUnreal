@@ -28,8 +28,9 @@
 #include "HoudiniRuntimeSettings.h"
 #include "HoudiniCookHandler.h"
 
-#include "CoreMinimal.h"
-#include "Landscape.h"
+#include "Core.h"
+#include "GameFramework/HoudiniEmptyActor.h"
+#include "Runtime/Engine/Classes/Landscape/Landscape.h"
 #include "TimerManager.h"
 #include "Components/PrimitiveComponent.h"
 #if WITH_EDITOR
@@ -43,7 +44,7 @@ class UStaticMesh;
 class UHoudiniAsset;
 class UObjectProperty;
 class USplineComponent;
-class UInstancedStaticMeshComponent;
+class UHierarchicalInstancedStaticMeshComponent;
 class UPhysicalMaterial;
 class UHoudiniAssetInput;
 class AHoudiniAssetActor;
@@ -56,7 +57,7 @@ class UHoudiniAssetInstanceInput;
 class UHoudiniAssetComponentMaterials;
 class UFoliageType_InstancedStaticMesh;
 
-struct FTransform;
+class FTransform;
 struct FPropertyChangedEvent;
 struct FWalkableSlopeOverride;
 
@@ -105,11 +106,25 @@ class HOUDINIENGINERUNTIME_API UHoudiniAssetComponent : public UPrimitiveCompone
 #endif
 
     GENERATED_UCLASS_BODY()
+public:
 
     virtual ~UHoudiniAssetComponent();
 
     /** Static mesh generation properties.**/
     public:
+
+		/** Number of LODs to generate when updating the static mesh */
+		UPROPERTY(EditAnywhere,
+			Category = HoudiniGeneratedStaticMeshSettings,
+			meta = (DisplayName = "LODs to Generate After Cooking", UIMin = 1, UIMax = 6))
+		int32 NumLODsToGenerate;
+
+		/// If a landscape is being generated, and this is non-null, this landscape actor will be updated instead of creating a new one.
+		/// Note that this will fail if the specified landscape's resolution does not match what Houdini expects.
+		UPROPERTY(EditAnywhere,
+			Category = HoudiniGeneratedStaticMeshSettings,
+			meta = (DisplayName = "Landscape to Update", UIMin = 1, UIMax = 6))
+		TArray<ALandscape*> LandscapesToUpdate;
 
         /** If true, the physics triangle mesh will use double sided faces when doing scene queries. */
         UPROPERTY( EditAnywhere,
@@ -123,9 +138,9 @@ class HOUDINIENGINERUNTIME_API UHoudiniAssetComponent : public UPrimitiveCompone
             meta = ( DisplayName = "Simple Collision Physical Material" ) )
         UPhysicalMaterial * GeneratedPhysMaterial;
 
-	/** Default properties of the body instance, copied into objects on instantiation, was URB_BodyInstance */
-	UPROPERTY(EditAnywhere, Category = HoudiniGeneratedStaticMeshSettings, meta = ( FullyExpand = "true" ))
-	struct FBodyInstance DefaultBodyInstance;
+		/** Default properties of the body instance, copied into objects on instantiation, was URB_BodyInstance */
+		UPROPERTY(EditAnywhere, Category = HoudiniGeneratedStaticMeshSettings, meta = ( FullyExpand = "true" ))
+		struct FBodyInstance DefaultBodyInstance;
 
         /** Collision Trace behavior - by default, it will keep simple(convex)/complex(per-poly) separate. */
         UPROPERTY( EditAnywhere,
@@ -138,7 +153,7 @@ class HOUDINIENGINERUNTIME_API UHoudiniAssetComponent : public UPrimitiveCompone
             Category = HoudiniGeneratedStaticMeshSettings,
             meta = ( DisplayName = "Light Map Resolution", FixedIncrement = "4.0" ) )
         int32 GeneratedLightMapResolution;
-        
+	
         /** Bias multiplier for Light Propagation Volume lighting. */
         UPROPERTY( EditAnywhere, BlueprintReadOnly,
             Category = HoudiniGeneratedStaticMeshSettings,
@@ -149,7 +164,7 @@ class HOUDINIENGINERUNTIME_API UHoudiniAssetComponent : public UPrimitiveCompone
         UPROPERTY(EditAnywhere,
             Category = HoudiniGeneratedStaticMeshSettings,
             meta = (DisplayName = "Distance Field Resolution Scale", UIMin = "0.0", UIMax = "100.0"))
-            float GeneratedDistanceFieldResolutionScale;
+		float GeneratedDistanceFieldResolutionScale;
 
         /** Custom walkable slope setting for generated mesh's body. */
         UPROPERTY( EditAnywhere, AdvancedDisplay,
@@ -218,9 +233,6 @@ public:
         /** Return true if this component's asset has been instantiated, but not cooked. **/
         bool HasBeenInstantiatedButNotCooked() const;
 
-        /** Ticking function to check cooking / instatiation status. **/
-        void TickHoudiniComponent();
-
         /** Ticking function to check whether UI update can be performed. This is necessary so that widget which has **/
         /** captured the mouse does not lose it. **/
         void TickHoudiniUIUpdate();
@@ -249,6 +261,10 @@ public:
         /** Start manual asset rebuild task. **/
         void StartTaskAssetRebuildManual();
 #endif
+
+		/** Ticking function to check cooking / instatiation status. **/
+		UFUNCTION()
+		void TickHoudiniComponent();
 
         /** Used to differentiate native components from dynamic ones. **/
         void SetNative( bool InbIsNativeComponent );
@@ -279,10 +295,11 @@ public:
         void GetAllUsedStaticMeshes( TArray< UStaticMesh * > & UsedStaticMeshes );
 
         /** Return all the UStaticMeshComponent & UInstancedStataicMeshComponent owned by the actor, along with their associated parts */
-        TMap<const UStaticMeshComponent *, FHoudiniGeoPartObject> CollectAllStaticMeshComponents() const;
+		TMap<const UStaticMeshComponent *, FHoudiniGeoPartObject> CollectAllStaticMeshComponents(bool bIncludeInstancedMeshes) const;
 
         /** Return all the UHoudiniInstancedActorComponents that have content */
-        TMap<const class UHoudiniInstancedActorComponent *, FHoudiniGeoPartObject> CollectAllInstancedActorComponents() const;
+		TMap<const class UActorComponent *, FHoudiniGeoPartObject> CollectAllInstancedActorComponents() const;
+
         /** Return all the UHoudiniMeshSplitInstancerComponent that have content */
         TMap<const class UHoudiniMeshSplitInstancerComponent *, FHoudiniGeoPartObject> CollectAllMeshSplitInstancerComponents() const;
 
@@ -309,7 +326,7 @@ public:
         UStaticMeshComponent * LocateStaticMeshComponent( const UStaticMesh * StaticMesh ) const;
 
         /** Locate instanced static mesh components for given static mesh. **/
-        bool LocateInstancedStaticMeshComponents( const UStaticMesh * StaticMesh, TArray< UInstancedStaticMeshComponent * > & Components ) const;
+        bool LocateInstancedStaticMeshComponents( const UStaticMesh * StaticMesh, TArray< UInstancedStaticMeshComponent * > & Components );
 
         /** Locate geo part object for given static mesh. Reverse map search. **/
         FHoudiniGeoPartObject LocateGeoPartObject( UStaticMesh * StaticMesh ) const;
@@ -398,10 +415,12 @@ public:
     protected:
 
         virtual void OnComponentCreated() override;
-        virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
+        virtual void OnComponentDestroyed() override;
         virtual void OnRegister() override;
 #endif
         virtual void Serialize( FArchive & Ar ) override;
+
+	public:
         static void AddReferencedObjects( UObject * InThis, FReferenceCollector & Collector );
 
     /** USceneComponent methods. **/
@@ -409,7 +428,7 @@ public:
 
         virtual FBoxSphereBounds CalcBounds( const FTransform & LocalToWorld ) const override;
 #if WITH_EDITOR
-        virtual void OnUpdateTransform( EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport ) override;
+		virtual void OnUpdateTransform(bool bSkipPhysicsMove);
 #endif
 
     private:
@@ -736,22 +755,22 @@ public:
         FGuid HapiGUID;
 
         /** Delegate handle returned by editor asset post import delegate. **/
-        FDelegateHandle DelegateHandleAssetPostImport;
+        //FDelegateHandle DelegateHandleAssetPostImport;
 
         /** Delegate to handle editor viewport drag and drop events. **/
-        FDelegateHandle DelegateHandleApplyObjectToActor;
+        //FDelegateHandle DelegateHandleApplyObjectToActor;
 
         /** Timer handle, this timer is used for cooking. **/
-        FTimerHandle TimerHandleCooking;
+        //FTimerHandle TimerHandleCooking;
 
         /** Timer delegate, we use it for ticking during cooking or instantiation. **/
-        FTimerDelegate TimerDelegateCooking;
+        //FTimerDelegate TimerDelegateCooking;
 
         /** Timer handle, this timer is used for UI updates. **/
-        FTimerHandle TimerHandleUIUpdate;
+        //FTimerHandle TimerHandleUIUpdate;
 
         /** Timer delegate, we use it for checking if details panel update can be performed. **/
-        FTimerDelegate TimerDelegateUIUpdate;
+        //FTimerDelegate TimerDelegateUIUpdate;
 
         /** Id of corresponding Houdini asset. **/
         HAPI_NodeId AssetId;

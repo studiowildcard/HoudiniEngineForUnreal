@@ -51,15 +51,15 @@ void
 FHoudiniRuntimeSettingsDetails::CustomizeDetails( IDetailLayoutBuilder & DetailBuilder )
 {
     // Create basic categories.
-    DetailBuilder.EditCategory( "Session", FText::GetEmpty(), ECategoryPriority::Important );
-    DetailBuilder.EditCategory( "Instantiating", FText::GetEmpty(), ECategoryPriority::Important );
-    DetailBuilder.EditCategory( "Cooking", FText::GetEmpty(), ECategoryPriority::Important );
-    DetailBuilder.EditCategory( "Parameters", FText::GetEmpty(), ECategoryPriority::Important );
-    DetailBuilder.EditCategory( "CollisionGeneration", FText::GetEmpty(), ECategoryPriority::Important );
-    DetailBuilder.EditCategory( "GeometryMarshalling", FText::GetEmpty(), ECategoryPriority::Important );
-    DetailBuilder.EditCategory( "GeometryScalingAndImport", FText::GetEmpty(), ECategoryPriority::Important );
-    DetailBuilder.EditCategory( "GeneratedStaticMeshSettings", FText::GetEmpty(), ECategoryPriority::Important );
-    DetailBuilder.EditCategory( "StaticMeshBuildSettings", FText::GetEmpty(), ECategoryPriority::Important );
+    DetailBuilder.EditCategory( "Session", TEXT(""), ECategoryPriority::Important );
+    DetailBuilder.EditCategory( "Instantiating", TEXT(""), ECategoryPriority::Important );
+    DetailBuilder.EditCategory( "Cooking", TEXT(""), ECategoryPriority::Important );
+    DetailBuilder.EditCategory( "Parameters", TEXT(""), ECategoryPriority::Important );
+    DetailBuilder.EditCategory( "CollisionGeneration", TEXT(""), ECategoryPriority::Important );
+    DetailBuilder.EditCategory( "GeometryMarshalling", TEXT(""), ECategoryPriority::Important );
+    DetailBuilder.EditCategory( "GeometryScalingAndImport", TEXT(""), ECategoryPriority::Important );
+    DetailBuilder.EditCategory( "GeneratedStaticMeshSettings", TEXT(""), ECategoryPriority::Important );
+    DetailBuilder.EditCategory( "StaticMeshBuildSettings", TEXT(""), ECategoryPriority::Important );
 
     // Create Plugin Information category.
     {
@@ -139,7 +139,7 @@ FHoudiniRuntimeSettingsDetails::CustomizeDetails( IDetailLayoutBuilder & DetailB
         }
     }
 
-    DetailBuilder.EditCategory( "HoudiniLocation", FText::GetEmpty(), ECategoryPriority::Important );
+    DetailBuilder.EditCategory( "HoudiniLocation", TEXT(""), ECategoryPriority::Important );
 }
 
 void
@@ -149,7 +149,7 @@ FHoudiniRuntimeSettingsDetails::CreateHoudiniEntry(
     int32 VersionMajor, int32 VersionMinor, int32 VersionBuild,
     int32 VersionPatch )
 {
-    FDetailWidgetRow & Row = DetailCategoryBuilder.AddCustomRow( FText::GetEmpty() );
+    FDetailWidgetRow & Row = DetailCategoryBuilder.AddCustomRow( TEXT("") );
 
     Row.NameWidget.Widget =
         SNew( STextBlock )
@@ -216,7 +216,7 @@ FHoudiniRuntimeSettingsDetails::CreateHoudiniEngineEntry(
     IDetailCategoryBuilder & DetailCategoryBuilder,
     int32 VersionMajor, int32 VersionMinor, int32 VersionApi)
 {
-    FDetailWidgetRow & Row = DetailCategoryBuilder.AddCustomRow( FText::GetEmpty() );
+    FDetailWidgetRow & Row = DetailCategoryBuilder.AddCustomRow( TEXT("") );
 
     Row.NameWidget.Widget =
         SNew( STextBlock )
@@ -270,7 +270,7 @@ FHoudiniRuntimeSettingsDetails::CreateHAPILibraryPathEntry(
     const FString & LibHAPIPath,
     IDetailCategoryBuilder & DetailCategoryBuilder )
 {
-    FDetailWidgetRow & Row = DetailCategoryBuilder.AddCustomRow( FText::GetEmpty() );
+    FDetailWidgetRow & Row = DetailCategoryBuilder.AddCustomRow( TEXT("") );
 
     FString LibHAPIName = FString::Printf( TEXT( "Location of %s" ), *FHoudiniEngineUtils::HoudiniGetLibHAPIName() );
 
@@ -294,7 +294,7 @@ FHoudiniRuntimeSettingsDetails::CreateHAPILicenseEntry(
     const FString & LibHAPILicense,
     IDetailCategoryBuilder & DetailCategoryBuilder )
 {
-    FDetailWidgetRow & Row = DetailCategoryBuilder.AddCustomRow( FText::GetEmpty() );
+    FDetailWidgetRow & Row = DetailCategoryBuilder.AddCustomRow( TEXT("") );
 
     FString LibHAPILicenseTypeText = TEXT( "Acquired License Type" );
 

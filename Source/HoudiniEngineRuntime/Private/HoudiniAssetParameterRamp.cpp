@@ -32,196 +32,14 @@
 #include "Curves/CurveBase.h"
 #include "SlateApplication.h"
 
-UHoudiniAssetParameterRampCurveFloat::UHoudiniAssetParameterRampCurveFloat( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
-{}
-
-#if WITH_EDITOR
-
-void
-UHoudiniAssetParameterRampCurveFloat::OnCurveChanged( const TArray< FRichCurveEditInfo > & ChangedCurveEditInfos )
-{
-    Super::OnCurveChanged( ChangedCurveEditInfos );
-
-    if ( HoudiniAssetParameterRamp.IsValid() )
-        HoudiniAssetParameterRamp->OnCurveFloatChanged( this );
-}
-
-#endif
-
-void
-UHoudiniAssetParameterRampCurveFloat::SetParentRampParameter( UHoudiniAssetParameterRamp * InHoudiniAssetParameterRamp )
-{
-    HoudiniAssetParameterRamp = InHoudiniAssetParameterRamp;
-}
-
-UHoudiniAssetParameterRampCurveColor::UHoudiniAssetParameterRampCurveColor( const FObjectInitializer& ObjectInitializer )
-    : Super( ObjectInitializer )
-    , ColorEvent( EHoudiniAssetParameterRampCurveColorEvent::None )
-{}
-
-#if WITH_EDITOR
-
-void
-UHoudiniAssetParameterRampCurveColor::OnCurveChanged( const TArray< FRichCurveEditInfo > & ChangedCurveEditInfos )
-{
-    Super::OnCurveChanged( ChangedCurveEditInfos );
-
-    if ( HoudiniAssetParameterRamp.IsValid() )
-        HoudiniAssetParameterRamp->OnCurveColorChanged( this );
-
-    // FIXME
-    // Unfortunately this will not work as SColorGradientEditor is missing OnCurveChange callback calls.
-    // This is most likely UE4 bug.
-}
-
-#endif
-
-bool
-UHoudiniAssetParameterRampCurveColor::Modify( bool bAlwaysMarkDirty )
-{
-    ColorEvent = GetEditorCurveTransaction();
-    return Super::Modify(bAlwaysMarkDirty);
-}
-
-EHoudiniAssetParameterRampCurveColorEvent::Type
-UHoudiniAssetParameterRampCurveColor::GetEditorCurveTransaction() const
-{
-    EHoudiniAssetParameterRampCurveColorEvent::Type TransactionType = EHoudiniAssetParameterRampCurveColorEvent::None;
-
-#if WITH_EDITOR
-
-    if ( GEditor )
-    {
-        const FString & TransactionName = GEditor->GetTransactionName().ToString();
-
-        if ( TransactionName.Equals( TEXT( "Move Gradient Stop" ) ) )
-            TransactionType = EHoudiniAssetParameterRampCurveColorEvent::MoveStop;
-        else if ( TransactionName.Equals( TEXT( "Add Gradient Stop" ) ) )
-            TransactionType = EHoudiniAssetParameterRampCurveColorEvent::AddStop;
-        else if ( TransactionName.Equals( TEXT( "Delete Gradient Stop" ) ) )
-            TransactionType = EHoudiniAssetParameterRampCurveColorEvent::RemoveStop;
-        else if ( TransactionName.Equals( TEXT( "Change Gradient Stop Time" ) ) )
-            TransactionType = EHoudiniAssetParameterRampCurveColorEvent::ChangeStopTime;
-        else if ( TransactionName.Equals( TEXT( "Change Gradient Stop Color" ) ) )
-            TransactionType = EHoudiniAssetParameterRampCurveColorEvent::ChangeStopColor;
-        else
-            TransactionType = EHoudiniAssetParameterRampCurveColorEvent::None;
-    }
-    else
-    {
-        TransactionType = EHoudiniAssetParameterRampCurveColorEvent::None;
-    }
-
-#endif
-
-    return TransactionType;
-}
-
-void
-UHoudiniAssetParameterRampCurveColor::SetParentRampParameter( UHoudiniAssetParameterRamp * InHoudiniAssetParameterRamp )
-{
-    HoudiniAssetParameterRamp = InHoudiniAssetParameterRamp;
-}
-
-EHoudiniAssetParameterRampCurveColorEvent::Type
-UHoudiniAssetParameterRampCurveColor::GetColorEvent() const
-{
-    return ColorEvent;
-}
-
-void
-UHoudiniAssetParameterRampCurveColor::ResetColorEvent()
-{
-    ColorEvent = EHoudiniAssetParameterRampCurveColorEvent::None;
-}
-
-bool
-UHoudiniAssetParameterRampCurveColor::IsTickableInEditor() const
-{
-    return true;
-}
-
-bool
-UHoudiniAssetParameterRampCurveColor::IsTickableWhenPaused() const
-{
-    return true;
-}
-
-void
-UHoudiniAssetParameterRampCurveColor::Tick( float DeltaTime )
-{
-    if ( HoudiniAssetParameterRamp.IsValid() )
-    {
-
-#if WITH_EDITOR
-
-        if ( GEditor && !GEditor->IsTransactionActive() )
-        {
-            switch ( ColorEvent )
-            {
-                case EHoudiniAssetParameterRampCurveColorEvent::ChangeStopTime:
-                case EHoudiniAssetParameterRampCurveColorEvent::ChangeStopColor:
-                {
-                    // If color picker is open, we need to wait until it is closed.
-                    TSharedPtr< SWindow > ActiveTopLevelWindow = FSlateApplication::Get().GetActiveTopLevelWindow();
-                    if ( ActiveTopLevelWindow.IsValid() )
-                    {
-                        const FString& ActiveTopLevelWindowTitle = ActiveTopLevelWindow->GetTitle().ToString();
-                        if ( ActiveTopLevelWindowTitle.Equals( TEXT( "Color Picker" ) ) )
-                            return;
-                    }
-                }
-
-                default:
-                {
-                    break;
-                }
-            }
-        }
-
-        // Notify parent ramp parameter that color has changed.
-        HoudiniAssetParameterRamp->OnCurveColorChanged( this );
-
-#endif
-
-    }
-    else
-    {
-        // If we are ticking for whatever reason, stop.
-        ResetColorEvent();
-    }
-}
-
-TStatId
-UHoudiniAssetParameterRampCurveColor::GetStatId() const
-{
-    RETURN_QUICK_DECLARE_CYCLE_STAT( UHoudiniAssetParameterRampCurveColor, STATGROUP_Tickables );
-}
-
-bool
-UHoudiniAssetParameterRampCurveColor::IsTickable() const
-{
-#if WITH_EDITOR
-
-    if ( GEditor )
-    {
-        return ColorEvent != EHoudiniAssetParameterRampCurveColorEvent::None;
-    }
-
-#endif
-
-    return false;
-}
-
 const EHoudiniAssetParameterRampKeyInterpolation::Type
 UHoudiniAssetParameterRamp::DefaultSplineInterpolation = EHoudiniAssetParameterRampKeyInterpolation::MonotoneCubic;
 
 const EHoudiniAssetParameterRampKeyInterpolation::Type
 UHoudiniAssetParameterRamp::DefaultUnknownInterpolation = EHoudiniAssetParameterRampKeyInterpolation::Linear;
 
-UHoudiniAssetParameterRamp::UHoudiniAssetParameterRamp( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetParameterRamp::UHoudiniAssetParameterRamp(const class FPostConstructInitializeProperties& PCIP)
+	: Super(PCIP)
     , HoudiniAssetParameterRampCurveFloat( nullptr )
     , HoudiniAssetParameterRampCurveColor( nullptr )
     , bIsFloatRamp( true )
@@ -270,8 +88,8 @@ UHoudiniAssetParameterRamp::Create(
         }
     }
 
-    UHoudiniAssetParameterRamp * HoudiniAssetParameterRamp = NewObject< UHoudiniAssetParameterRamp >(
-        Outer, UHoudiniAssetParameterRamp::StaticClass(), NAME_None, RF_Public | RF_Transactional );
+	UHoudiniAssetParameterRamp * HoudiniAssetParameterRamp = ConstructObject< UHoudiniAssetParameterRamp >(
+		UHoudiniAssetParameterRamp::StaticClass(), Outer, NAME_None, RF_Public | RF_Transactional);
 
     HoudiniAssetParameterRamp->CreateParameter( InPrimaryObject, InParentParameter, InNodeId, ParmInfo );
 
@@ -411,6 +229,9 @@ UHoudiniAssetParameterRamp::OnCurveEditingFinished()
 
             MarkPreChanged();
 
+			//JC: get a copy of the keys array so that we can access it by index
+			const TArray<FRichCurveKey> RichCurveKeysCopy = RichCurve.GetCopyOfKeys();
+
             // We need to update ramp key positions.
             for ( int32 KeyIdx = 0, KeyNum = RichCurve.GetNumKeys(); KeyIdx < KeyNum; ++KeyIdx )
             {
@@ -421,7 +242,7 @@ UHoudiniAssetParameterRamp::OnCurveEditingFinished()
                 if ( !GetRampKeysCurveFloat( KeyIdx, ChildParamPosition, ChildParamValue, ChildParamInterpolation ) )
                     continue;
 
-                const FRichCurveKey & RichCurveKey = RichCurve.Keys[ KeyIdx ];
+				const FRichCurveKey & RichCurveKey = RichCurveKeysCopy[ KeyIdx ];
 
                 ChildParamPosition->SetValue( RichCurveKey.Time, 0, false, false );
                 ChildParamValue->SetValue( RichCurveKey.Value, 0, false, false );
@@ -441,6 +262,11 @@ UHoudiniAssetParameterRamp::OnCurveEditingFinished()
             FRichCurve & RichCurveB = HoudiniAssetParameterRampCurveColor->FloatCurves[ 2 ];
             FRichCurve & RichCurveA = HoudiniAssetParameterRampCurveColor->FloatCurves[ 3 ];
 
+			//JC: get a copy of the keys array so that we can access it by index
+			const TArray<FRichCurveKey> RichCurveRKeysCopy = RichCurveR.GetCopyOfKeys();
+			const TArray<FRichCurveKey> RichCurveGKeysCopy = RichCurveG.GetCopyOfKeys();
+			const TArray<FRichCurveKey> RichCurveBKeysCopy = RichCurveB.GetCopyOfKeys();
+
             MarkPreChanged();
 
             // We need to update ramp key positions.
@@ -453,9 +279,9 @@ UHoudiniAssetParameterRamp::OnCurveEditingFinished()
                 if ( !GetRampKeysCurveColor( KeyIdx, ChildParamPosition, ChildParamColor, ChildParamInterpolation ) )
                     continue;
 
-                const FRichCurveKey & RichCurveKeyR = RichCurveR.Keys[ KeyIdx ];
-                const FRichCurveKey & RichCurveKeyG = RichCurveG.Keys[ KeyIdx ];
-                const FRichCurveKey & RichCurveKeyB = RichCurveB.Keys[ KeyIdx ];
+				const FRichCurveKey & RichCurveKeyR = RichCurveRKeysCopy[ KeyIdx ];
+				const FRichCurveKey & RichCurveKeyG = RichCurveGKeysCopy[ KeyIdx ];
+				const FRichCurveKey & RichCurveKeyB = RichCurveBKeysCopy[ KeyIdx ];
                 //const FRichCurveKey & RichCurveKeyA = RichCurveA.Keys[ KeyIdx ];
 
                 ChildParamPosition->SetValue( RichCurveKeyR.Time, 0, false, false );
@@ -733,7 +559,7 @@ UHoudiniAssetParameterRamp::TranslateUnrealRampKeyInterpolation( ERichCurveInter
         case ERichCurveInterpMode::RCIM_Cubic:
             return UHoudiniAssetParameterRamp::DefaultSplineInterpolation;
 
-        case ERichCurveInterpMode::RCIM_None:
+		//case ERichCurveInterpMode::RCIM_None:
         default:
             break;
     }

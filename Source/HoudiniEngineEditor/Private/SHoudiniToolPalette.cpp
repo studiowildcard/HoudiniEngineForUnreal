@@ -26,7 +26,7 @@
 #include "SHoudiniToolPalette.h"
 #include "Modules/ModuleManager.h"
 #include "Widgets/SBoxPanel.h"
-#include "SlateOptMacros.h"
+//#include "SlateOptMacros.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Images/SImage.h"
 #include "Styling/SlateTypes.h"
@@ -61,11 +61,12 @@ class SHoudiniToolListView : public SListView<TSharedPtr<FHoudiniTool>>
 {
 public:
     virtual bool SupportsKeyboardFocus() const override { return true; }
-    virtual FReply OnKeyDown( const FGeometry& InGeometry, const FKeyEvent& InKeyEvent ) override
+    virtual FReply OnKeyDown( const FGeometry& InGeometry, const FKeyboardEvent& InKeyboardEvent ) override
     {
         return FReply::Unhandled();
     }
 };
+
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 void SHoudiniToolPalette::Construct( const FArguments& InArgs )
@@ -113,7 +114,7 @@ TSharedRef< ITableRow > SHoudiniToolPalette::MakeListViewWidget( TSharedPtr< FHo
     // Building the tool's tooltip
     FString ToolTip = HoudiniTool->Name.ToString() + TEXT( "\n" );
     if ( HoudiniTool->HoudiniAsset.IsValid() )
-        ToolTip += HoudiniTool->HoudiniAsset.ToSoftObjectPath().ToString() /*->AssetFileName */+ TEXT( "\n\n" );
+        ToolTip += HoudiniTool->HoudiniAsset.ToStringReference().ToString() /*->AssetFileName */+ TEXT( "\n\n" );
     if ( !HoudiniTool->ToolTipText.IsEmpty() )
         ToolTip += HoudiniTool->ToolTipText.ToString() + TEXT("\n\n");
 
@@ -453,9 +454,9 @@ SHoudiniToolPalette::GetMeanWorldSelectionTransform()
 
             // Accumulate all the actor transforms...
             if ( NumAppliedTransform == 0 )
-                SpawnTransform = Actor->GetActorTransform();
+                SpawnTransform = Actor->GetTransform();
             else
-                SpawnTransform.Accumulate( Actor->GetActorTransform() );
+                SpawnTransform.Accumulate( Actor->GetTransform() );
 
             NumAppliedTransform++;
         }

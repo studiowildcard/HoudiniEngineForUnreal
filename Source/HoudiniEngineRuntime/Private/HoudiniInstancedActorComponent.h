@@ -32,6 +32,10 @@
 #pragma once
 
 #include "Components/SceneComponent.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
+#if WITH_EDITOR
+#include "LevelEditorUtils.h"
+#endif
 #include "HoudiniInstancedActorComponent.generated.h"
 
 
@@ -42,7 +46,7 @@ class HOUDINIENGINERUNTIME_API UHoudiniInstancedActorComponent : public USceneCo
 
 public:
     virtual void OnComponentCreated() override;
-    virtual void OnComponentDestroyed( bool bDestroyingHierarchy ) override;
+    virtual void OnComponentDestroyed() override;
     virtual void Serialize( FArchive & Ar ) override;
 
     static void AddReferencedObjects( UObject * InThis, FReferenceCollector & Collector );
@@ -67,10 +71,14 @@ public:
         const FRotator & RotationOffset,
         const FVector & ScaleOffset );
 
-    UPROPERTY( SkipSerialization, VisibleAnywhere, Category = Instances )
+	//JC: is SkipSerialization the same as Transient?
+    //UPROPERTY( SkipSerialization, VisibleAnywhere, Category = Instances )
+	UPROPERTY(Transient, VisibleAnywhere, Category = Instances)
     UObject* InstancedAsset;
 
-    UPROPERTY( SkipSerialization, VisibleInstanceOnly, Category = Instances )
+	//JC: is SkipSerialization the same as Transient?
+    //UPROPERTY( SkipSerialization, VisibleInstanceOnly, Category = Instances )
+	UPROPERTY(Transient, VisibleInstanceOnly, Category = Instances)
     TArray< AActor* > Instances;
 
 };

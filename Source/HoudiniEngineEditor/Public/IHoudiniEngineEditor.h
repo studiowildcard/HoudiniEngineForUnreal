@@ -24,9 +24,10 @@
 
 #pragma once
 #include "Modules/ModuleInterface.h"
+#include "Developer/MeshUtilities/Public/MeshUtilities.h"
 #include "Styling/ISlateStyle.h"
 
-class IHoudiniEngineEditor : public IModuleInterface
+class IHoudiniEngineEditor : public IProceduralMeshGeneratorModule
 {
     public:
 
@@ -74,4 +75,5 @@ class IHoudiniEngineEditor : public IModuleInterface
         /** Create custom placement extensions */
         virtual void RegisterPlacementModeExtensions() {}
         virtual void UnregisterPlacementModeExtensions() {}
+
 };

@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Copyright (c) <2017> Side Effects Software Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,20 +34,28 @@
 #include "HoudiniLandscapeUtils.h"
 #include "HoudiniEngineBakeUtils.h"
 #include "HoudiniEngineMaterialUtils.h"
-#include "Components/SplineComponent.h"
-#include "LandscapeInfo.h"
-#include "LandscapeComponent.h"
+
+//#include "Landscape/Landscape.h"
+//#include "Landscape/LandscapeInfo.h"
+#include "Landscape/Landscape.h"
+#include "Landscape/LandscapeComponent.h"
+#include "Landscape/LandscapeMeshCollisionComponent.h"
+#include "Landscape/LandscapeMaterialInstanceConstant.h"
+#include "Landscape/LandscapeSplinesComponent.h"
+#include "Landscape/LandscapeInfo.h"
+#include "Landscape/LandscapeLayerInfoObject.h"
+
 #include "HoudiniInstancedActorComponent.h"
 #include "HoudiniMeshSplitInstancerComponent.h"
 
-#include "CoreMinimal.h"
+#include "Core.h"
 #include "AI/Navigation/NavCollision.h"
 #include "Engine/StaticMeshSocket.h"
 #if WITH_EDITOR
     #include "Editor.h"
     #include "EditorFramework/AssetImportData.h"
-    #include "Interfaces/ITargetPlatform.h"
-    #include "Interfaces/ITargetPlatformManagerModule.h"
+    //#include "Interfaces/ITargetPlatform.h"
+    //#include "Interfaces/ITargetPlatformManagerModule.h"
     #include "Editor/UnrealEd/Private/GeomFitUtils.h"
     #include "Private/ConvexDecompTool.h"
     #include "Widgets/Notifications/SNotificationList.h"
@@ -57,25 +65,23 @@
 #include "EngineUtils.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "StaticMeshResources.h"
-#include "Components/InstancedStaticMeshComponent.h"
-#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 
+//#include "Factories.h"
+//#include "TextureLayout.h"
+//#include "BSPOps.h"
+#include "RawMesh.h"
+//#include "MeshUtilities.h"
+
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Paths.h"
 
 #if PLATFORM_WINDOWS
-    #include "WindowsHWrapper.h"
-
-    // Of course, Windows defines its own GetGeoInfo,
-    // So we need to undefine that before including HoudiniApi.h to avoid collision...
-    #ifdef GetGeoInfo
-        #undef GetGeoInfo
-    #endif
+    #include "WindowsHWrapper_Houdini.h"
 #endif
 
-#include <string>
-
-#include "HAL/PlatformMisc.h"
-#include "HAL/PlatformApplicationMisc.h"
+#include "HAL/Platform.h"
+//#include "HAL/PlatformMisc.h"
+//#include "HAL/PlatformApplicationMisc.h"
 
 #include "Internationalization.h"
 
@@ -2469,7 +2475,7 @@ FHoudiniEngineUtils::HapiCreateInputNodeForData(
             fSplineResolution = HAPI_UNREAL_PARAM_SPLINE_RESOLUTION_DEFAULT;
     }
 
-    int32 nNumberOfControlPoints = SplineComponent->GetNumberOfSplinePoints();
+	int32 nNumberOfControlPoints = SplineComponent->GetNumSplinePoints();
     float fSplineLength = SplineComponent->GetSplineLength();  
 
     // Calculate the number of refined point we want
@@ -2493,11 +2499,15 @@ FHoudiniEngineUtils::HapiCreateInputNodeForData(
         FVector Scale;
         for (int32 n = 0; n < nNumberOfControlPoints; n++)
         {
-            tRefinedSplinePositions[n] = SplineComponent->GetLocationAtSplinePoint(n, ESplineCoordinateSpace::Local);
-            tRefinedSplineRotations[n] = SplineComponent->GetQuaternionAtSplinePoint(n, ESplineCoordinateSpace::World);
+			tRefinedSplinePositions[n] = FSplineUtils::GetLocalLocationAtSplinePoint(SplineComponent, n);
+			tRefinedSplineRotations[n] = FSplineUtils::GetWorldRotationAtSplinePoint(SplineComponent, n);
 
-            Scale = SplineComponent->GetScaleAtSplinePoint(n);
-            tRefinedSplineScales[n] = Scale;
+			//tRefinedSplinePositions[n] = SplineComponent->GetLocationAtSplinePoint(n, ESplineCoordinateSpace::Local);
+			//tRefinedSplineRotations[n] = SplineComponent->GetQuaternionAtSplinePoint(n, ESplineCoordinateSpace::World);
+
+			tRefinedSplineScales[n] = FSplineUtils::GetScaleAtSplinePoint(SplineComponent, n);
+            //Scale = SplineComponent->GetScaleAtSplinePoint(n);
+            //tRefinedSplineScales[n] = Scale;
             // tRefinedSplinePScales[n] = (Scale.Y + Scale.Z) / 2.0f; //FMath::Max(Scale.Y, Scale.Z);
         }           
     }
@@ -2513,10 +2523,15 @@ FHoudiniEngineUtils::HapiCreateInputNodeForData(
         float fCurrentDistance = 0.0f;
         for (int32 n = 0; n < nNumberOfRefinedSplinePoints; n++)
         {    
-            tRefinedSplinePositions[n] = SplineComponent->GetLocationAtDistanceAlongSpline(fCurrentDistance, ESplineCoordinateSpace::Local);
-            tRefinedSplineRotations[n] = SplineComponent->GetQuaternionAtDistanceAlongSpline(fCurrentDistance, ESplineCoordinateSpace::World);
+			//JC: is this the correct transformation?
+			tRefinedSplinePositions[n] = FSplineUtils::GetLocalLocationAtDistanceAlongSpline(SplineComponent, fCurrentDistance);
+			//tRefinedSplinePositions[n] = SplineComponent->GetLocationAtDistanceAlongSpline(fCurrentDistance, ESplineCoordinateSpace::Local);
+
+			tRefinedSplineRotations[n] = FSplineUtils::GetWorldRotationAtDistanceAlongSpline(SplineComponent, fCurrentDistance);
+            //tRefinedSplineRotations[n] = SplineComponent->GetQuaternionAtDistanceAlongSpline(fCurrentDistance, ESplineCoordinateSpace::World);
             
-            Scale = SplineComponent->GetScaleAtDistanceAlongSpline(fCurrentDistance);
+			Scale = FSplineUtils::GetScaleAtDistanceAlongSpline(SplineComponent, fCurrentDistance);;
+            //Scale = SplineComponent->GetScaleAtDistanceAlongSpline(fCurrentDistance);
 
             tRefinedSplineScales[n] = Scale;
             // tRefinedSplinePScales[n] = (Scale.Y + Scale.Z) / 2.0f; //FMath::Max(Scale.Y, Scale.Z);
@@ -2544,10 +2559,12 @@ FHoudiniEngineUtils::HapiCreateInputNodeForData(
     for ( int32 n = 0; n < nNumberOfControlPoints; n++ )
     {
         // Getting the Local Transform for positions and scale
-        OutlinerMesh.SplineControlPointsTransform[n] = SplineComponent->GetTransformAtSplinePoint(n, ESplineCoordinateSpace::Local, true);
+		OutlinerMesh.SplineControlPointsTransform[n] = FSplineUtils::GetLocalTransformAtSplinePoint(SplineComponent, n);
+        //OutlinerMesh.SplineControlPointsTransform[n] = SplineComponent->GetTransformAtSplinePoint(n, ESplineCoordinateSpace::Local, true);
 
         // ... but we used we used the world rotation
-        OutlinerMesh.SplineControlPointsTransform[n].SetRotation(SplineComponent->GetQuaternionAtSplinePoint(n, ESplineCoordinateSpace::World));
+		OutlinerMesh.SplineControlPointsTransform[n].SetRotation(FSplineUtils::GetWorldRotationAtSplinePoint(SplineComponent, n));
+        //OutlinerMesh.SplineControlPointsTransform[n].SetRotation(SplineComponent->GetQuaternionAtSplinePoint(n, ESplineCoordinateSpace::World));
     }
 
     // Cook the spline node.
@@ -2620,7 +2637,8 @@ FHoudiniEngineUtils::HapiCreateInputNodeForData(
     for ( int32 LODIndex = 0; LODIndex < NumLODsToExport; LODIndex++ )
     {
         // Grab base LOD level.
-        FStaticMeshSourceModel & SrcModel = StaticMesh->SourceModels[ LODIndex ];
+#if WITH_EDITORONLY_DATA
+    FStaticMeshSourceModel & SrcModel = StaticMesh->SourceModels[LODIndex];
 
         // No LOD, we need a single input node
         // If connected asset id is invalid, we need to create an input asset.
@@ -2640,6 +2658,7 @@ FHoudiniEngineUtils::HapiCreateInputNodeForData(
         // Load the existing raw mesh.
         FRawMesh RawMesh;
         SrcModel.RawMeshBulkData->LoadRawMesh( RawMesh );
+#endif
 
         // Create part.
         HAPI_PartInfo Part;
@@ -2832,6 +2851,7 @@ FHoudiniEngineUtils::HapiCreateInputNodeForData(
                 FStaticMeshRenderData& RenderData = *StaticMesh->RenderData;
                 FStaticMeshLODResources& RenderModel = RenderData.LODResources[LODIndex];
                 FColorVertexBuffer& ColorVertexBuffer = *ComponentLODInfo.OverrideVertexColors;
+#if WITH_EDITORONLY_DATA
                 if ( RenderData.WedgeMap.Num() > 0 && ColorVertexBuffer.GetNumVertices() == RenderModel.GetNumVertices() )
                 {
                     // Use the wedge map if it is available as it is lossless.
@@ -2857,6 +2877,9 @@ FHoudiniEngineUtils::HapiCreateInputNodeForData(
                         }
                     }
                 }
+#else
+			check(false && "no EditorOnly data (wedgemap)");
+#endif
             }
 
             // See if we have colors to upload.
@@ -2954,7 +2977,7 @@ FHoudiniEngineUtils::HapiCreateInputNodeForData(
             // Create list of materials, one for each face.
             TArray< char * > StaticMeshFaceMaterials;
             FHoudiniEngineUtils::CreateFaceMaterialArray(
-                StaticMesh->StaticMaterials, RawMesh.FaceMaterialIndices,
+            StaticMesh->Materials, RawMesh.FaceMaterialIndices,
                 StaticMeshFaceMaterials );
 
             // Get name of attribute used for marshalling materials.
@@ -3100,15 +3123,19 @@ FHoudiniEngineUtils::HapiCreateInputNodeForData(
         if( !HoudiniRuntimeSettings->MarshallingAttributeInputSourceFile.IsEmpty() )
         {
             FString Filename;
+
+#if WITH_EDITORONLY_DATA
+		//JC: need to reimplement this?
             // Create primitive attribute with mesh asset path
-            if( UAssetImportData* ImportData = StaticMesh->AssetImportData )
-            {
-                for( const auto& SourceFile : ImportData->SourceData.SourceFiles )
-                {
-                    Filename = UAssetImportData::ResolveImportFilename( SourceFile.RelativeFilename, ImportData->GetOutermost() );
-                    break;
-                }
-            }
+        //if( UAssetImportData* ImportData = StaticMesh->AssetImportData )
+        //{
+        //    for( const auto& SourceFile : ImportData->SourceData.SourceFiles )
+        //    {
+        //        Filename = UAssetImportData::ResolveImportFilename( SourceFile.RelativeFilename, ImportData->GetOutermost() );
+        //        break;
+        //    }
+        //}
+#endif
 
             if( !Filename.IsEmpty() )
             {
@@ -3482,46 +3509,55 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
     const FStaticMeshLODGroup & LODGroup = CurrentPlatform->GetStaticMeshLODSettings().GetLODGroup( NAME_None );
     int32 DefaultNumLODs = LODGroup.GetDefaultNumLODs();
 
-    // Get the AssetInfo
-    HAPI_AssetInfo AssetInfo;
-    HOUDINI_CHECK_ERROR_RETURN( FHoudiniApi::GetAssetInfo(
-        FHoudiniEngine::Get().GetSession(), AssetId, &AssetInfo ), false );
+	//JC: Added LOD controls
+    //int32 NumLODs = LODGroup.GetDefaultNumLODs();
+	int32 NumLODs = HoudiniCookParams.NumLODsToGenerate;
+	if (NumLODs < 0)
+		NumLODs = 0;
+	else if (NumLODs > 6)
+		NumLODs = 6;
 
-    // Retrieve asset transform.
-    FTransform AssetUnrealTransform;
-    if ( !FHoudiniEngineUtils::HapiGetAssetTransform( AssetId, AssetUnrealTransform ) )
-        return false;
-    ComponentTransform = AssetUnrealTransform;
+	// Get the AssetInfo
+	HAPI_AssetInfo AssetInfo;
+	HOUDINI_CHECK_ERROR_RETURN(FHoudiniApi::GetAssetInfo(
+		FHoudiniEngine::Get().GetSession(), AssetId, &AssetInfo), false);
 
-    // Retrieve information about each object contained within our asset.
-    TArray< HAPI_ObjectInfo > ObjectInfos;
-    if ( !FHoudiniEngineUtils::HapiGetObjectInfos( AssetId, ObjectInfos ) )
-        return false;
-    const int32 ObjectCount = ObjectInfos.Num();
+	// Retrieve asset transform.
+	FTransform AssetUnrealTransform;
+	if (!FHoudiniEngineUtils::HapiGetAssetTransform(AssetId, AssetUnrealTransform))
+		return false;
+	ComponentTransform = AssetUnrealTransform;
 
-    // Retrieve transforms for each object in this asset.
-    TArray< HAPI_Transform > ObjectTransforms;
-    if ( !FHoudiniEngineUtils::HapiGetObjectTransforms( AssetId, ObjectTransforms ) )
-        return false;
-    // Retrieve all used unique material ids.
-    TSet< HAPI_NodeId > UniqueMaterialIds;
-    TSet< HAPI_NodeId > UniqueInstancerMaterialIds;
-    TMap< FHoudiniGeoPartObject, HAPI_NodeId > InstancerMaterialMap;
-    FHoudiniEngineUtils::ExtractUniqueMaterialIds(
-        AssetInfo, UniqueMaterialIds, UniqueInstancerMaterialIds, InstancerMaterialMap );
+	// Retrieve information about each object contained within our asset.
+	TArray< HAPI_ObjectInfo > ObjectInfos;
+	if (!FHoudiniEngineUtils::HapiGetObjectInfos(AssetId, ObjectInfos))
+		return false;
+	const int32 ObjectCount = ObjectInfos.Num();
 
-    // Create All the materials found on the asset
-    TMap< FString, UMaterialInterface * > Materials;
-    FHoudiniEngineMaterialUtils::HapiCreateMaterials(
-        AssetId, HoudiniCookParams, AssetInfo, UniqueMaterialIds,
-        UniqueInstancerMaterialIds, Materials, ForceRecookAll );
+	// Retrieve transforms for each object in this asset.
+	TArray< HAPI_Transform > ObjectTransforms;
+	if (!FHoudiniEngineUtils::HapiGetObjectTransforms(AssetId, ObjectTransforms))
+		return false;
 
-    // Update all material assignments
-    HoudiniCookParams.HoudiniCookManager->ClearAssignmentMaterials();
-    for( const auto& AssPair : Materials )
-    {
-        HoudiniCookParams.HoudiniCookManager->AddAssignmentMaterial( AssPair.Key, AssPair.Value );
-    }
+	// Retrieve all used unique material ids.
+	TSet< HAPI_NodeId > UniqueMaterialIds;
+	TSet< HAPI_NodeId > UniqueInstancerMaterialIds;
+	TMap< FHoudiniGeoPartObject, HAPI_NodeId > InstancerMaterialMap;
+	FHoudiniEngineUtils::ExtractUniqueMaterialIds(
+		AssetInfo, UniqueMaterialIds, UniqueInstancerMaterialIds, InstancerMaterialMap);
+
+	// Create All the materials found on the asset
+	TMap< FString, UMaterialInterface * > Materials;
+	FHoudiniEngineMaterialUtils::HapiCreateMaterials(
+		AssetId, HoudiniCookParams, AssetInfo, UniqueMaterialIds,
+		UniqueInstancerMaterialIds, Materials, ForceRecookAll);
+
+	// Update all material assignments
+	HoudiniCookParams.HoudiniCookManager->ClearAssignmentMaterials();
+	for (const auto& AssPair : Materials)
+	{
+		HoudiniCookParams.HoudiniCookManager->AddAssignmentMaterial(AssPair.Key, AssPair.Value);
+	}
 
     // Iterate through all objects.
     for ( int32 ObjectIdx = 0; ObjectIdx < ObjectInfos.Num(); ++ObjectIdx )
@@ -4171,7 +4207,7 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
                     // Retrieve the vertices positions if necessary
                     if ( PartPositions.Num() <= 0 )
                     {
-                        if ( !FHoudiniEngineUtils::HapiGetAttributeDataAsFloat(
+						if ( !FHoudiniEngineUtils::HapiGetAttributeDataAsFloat(
                             AssetId, ObjectInfo.nodeId, GeoInfo.nodeId,
                             PartInfo.id, HAPI_UNREAL_ATTRIB_POSITION, AttribInfoPositions, PartPositions ) )
                         {
@@ -4183,7 +4219,7 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
 
                             break;
                         }
-                    }
+					}
 
                     // Use multiple convex hulls?
                     bool MultiHullDecomp = false;
@@ -4257,8 +4293,8 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
                     if( !MeshPackage )
                         continue;
 
-                    StaticMesh = NewObject< UStaticMesh >(
-                        MeshPackage, FName( *MeshName ),
+						StaticMesh = ConstructObject< UStaticMesh >(UStaticMesh::StaticClass(),
+							MeshPackage, FName(*MeshName),
                         ( HoudiniCookParams.StaticMeshBakeMode == EBakeMode::Intermediate ) ? RF_NoFlags : RF_Public | RF_Standalone );
 
                     // Add meta information to this package.
@@ -4780,7 +4816,7 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
                 {
                     // Clear the previously generated materials ( unless we're not the first lod level )
                     if ( !IsLOD || ( IsLOD && LodIndex == 0 ) )
-                        StaticMesh->StaticMaterials.Empty();
+                        StaticMesh->Materials.Empty();
 
                     RawMesh.FaceMaterialIndices.SetNumZeroed( SplitGroupFaceCount );
 
@@ -4815,7 +4851,7 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
                                     MaterialInterface = ReplacementMaterialInterface;
 
                                 // Add this material to the map
-                                CurrentFaceMaterialIdx = StaticMesh->StaticMaterials.Add( FStaticMaterial( MaterialInterface ) );
+                                CurrentFaceMaterialIdx = StaticMesh->Materials.Add( MaterialInterface );
                                 MapHoudiniMatAttributesToUnrealIndex.Add( MaterialName, CurrentFaceMaterialIdx );
                             }
                             else
@@ -4853,13 +4889,13 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
                                         MaterialInterface = ReplacementMaterial;
 
                                     // Add the material to the Static mesh
-                                    CurrentFaceMaterialIdx = StaticMesh->StaticMaterials.Add( FStaticMaterial( MaterialInterface ) );
+                                    CurrentFaceMaterialIdx = StaticMesh->Materials.Add( MaterialInterface );
 
-                                    // Map the Houdini ID to the unreal one
-                                    MapHoudiniMatIdToUnrealIndex.Add( MaterialId, CurrentFaceMaterialIdx );
-                                }
-                            }
-                        }
+									// Map the Houdini ID to the unreal one
+									MapHoudiniMatIdToUnrealIndex.Add( MaterialId, CurrentFaceMaterialIdx );
+								}
+							}
+						}
 
                         // Update the Face Material on the mesh
                         RawMesh.FaceMaterialIndices[ FaceIdx ] = CurrentFaceMaterialIdx;
@@ -4892,15 +4928,15 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
                             if ( ReplacementMaterial )
                                 Material = ReplacementMaterial;
 
-                            StaticMesh->StaticMaterials.Empty();
-                            StaticMesh->StaticMaterials.Add( FStaticMaterial(Material) );
+							StaticMesh->Materials.Empty();
+							StaticMesh->Materials.Add( Material );
                         }
                         else
                         {
                             // We have multiple materials
                             // Clear the previously generated materials ( unless we're not the first lod level )
                             if ( !IsLOD || ( IsLOD && LodIndex == 0 ) )
-                                StaticMesh->StaticMaterials.Empty();
+                                StaticMesh->Materials.Empty();
 
                             // Get default Houdini material.
                             UMaterial * MaterialDefault = FHoudiniEngine::Get().GetHoudiniDefaultMaterial().Get();
@@ -4942,7 +4978,7 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
                                     Material = ReplacementMaterial;
 
                                 // Add the material to the Static mesh
-                                int32 UnrealMatIndex = StaticMesh->StaticMaterials.Add( FStaticMaterial( Material ) );
+                                int32 UnrealMatIndex = StaticMesh->Materials.Add( Material );
 
                                 // Map the houdini ID to the unreal one
                                 MapHoudiniMatIdToUnrealIndex.Add( MaterialId, UnrealMatIndex );
@@ -4967,8 +5003,8 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
                         if ( ReplacementMaterial )
                             Material = ReplacementMaterial;
 
-                        StaticMesh->StaticMaterials.Empty();
-                        StaticMesh->StaticMaterials.Add( FStaticMaterial(Material) );
+						StaticMesh->Materials.Empty();
+						StaticMesh->Materials.Add( Material );
                     }
                 }
 
@@ -5002,20 +5038,52 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
                         StaticMesh->LightMapResolution = LightMapResolutionOverride;
                 }
 
+#if WITH_EDITORONLY_DATA
+
                 // Store the new raw mesh.
                 SrcModel->RawMeshBulkData->SaveRawMesh( RawMesh );
 
-                // Lambda for initializing a LOD level
-                auto InitLODLevel = [ & ]( const int32& LODLevelIndex )
-                {
-                    // Ensure that this LOD level exisits
+				// Lambda for initializing a LOD level
+				auto InitLODLevel = [ & ]( const int32& LODLevelIndex )
+				{
+					// Ensure that this LOD level exisits
                     while ( StaticMesh->SourceModels.Num() < ( LODLevelIndex + 1 ) )
+						new ( StaticMesh->SourceModels ) FStaticMeshSourceModel();
+
+					// Set its reduction settings to the default
+					StaticMesh->SourceModels[ LODLevelIndex ].ReductionSettings = LODGroup.GetDefaultSettings( LODLevelIndex );
+
+					// Do we currently have too many LODs? remove extra
+					if (StaticMesh->SourceModels.Num() > NumLODs)
+					{
+						int32 NumToRemove = StaticMesh->SourceModels.Num() - NumLODs;
+						StaticMesh->SourceModels.RemoveAt(NumLODs, NumToRemove);
+					}
+
+					// Not enough LODs? add more
+					while( StaticMesh->SourceModels.Num() < NumLODs )
+					{
                         new ( StaticMesh->SourceModels ) FStaticMeshSourceModel();
+					}
 
-                    // Set its reduction settings to the default
-                    StaticMesh->SourceModels[ LODLevelIndex ].ReductionSettings = LODGroup.GetDefaultSettings( LODLevelIndex );
+					// start at 100% triangles for LOD0
+					float pctTriangles = 1.0;
 
-                    for ( int32 MaterialIndex = 0; MaterialIndex < StaticMesh->StaticMaterials.Num(); ++MaterialIndex )
+					for ( int32 ModelLODIndex = 0; ModelLODIndex < NumLODs; ++ModelLODIndex )
+					{
+						StaticMesh->SourceModels[ ModelLODIndex ].ReductionSettings =
+							LODGroup.GetDefaultSettings( ModelLODIndex );
+
+						//JC: Generate LOD triangle percentage
+						StaticMesh->SourceModels[ ModelLODIndex ].ReductionSettings.PercentTriangles = pctTriangles;
+						// reduce by half for the next LOD
+						pctTriangles = pctTriangles * 0.5f;
+						// clamp min triangle percent
+						if (pctTriangles < 0.02f)
+							pctTriangles = 0.02f;
+					}
+
+                    for ( int32 MaterialIndex = 0; MaterialIndex < StaticMesh->Materials.Num(); ++MaterialIndex )
                     {
                         FMeshSectionInfo Info = StaticMesh->SectionInfoMap.Get( LODLevelIndex, MaterialIndex );
                         Info.MaterialIndex = MaterialIndex;
@@ -5036,6 +5104,8 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
                     // Init the current LOD level
                     InitLODLevel( LodIndex );
 
+                    // Assign generation parameters for this static mesh.
+                    HoudiniCookParams.HoudiniCookManager->SetStaticMeshGenerationParameters( StaticMesh );
                     // Look for LOD Specific attributes
                     TArray< float > LODScreenSizes;
                     HAPI_AttributeInfo AttribInfoScreenSize;
@@ -5093,6 +5163,10 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
                     LodIndex++;
                 }
 
+#else	
+				check(false && "missing editoronly data for storing raw mesh");
+#endif
+
                 // The following actions needs to be done only once per Static Mesh,
                 // So if we are a LOD level other than the last one, skip this!
                 if ( IsLOD && ( LodIndex != NumberOfLODs ) )
@@ -5130,19 +5204,10 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
                 StaticMesh->PreEditChange( nullptr );
 
                 FHoudiniScopedGlobalSilence ScopedGlobalSilence;
-                TArray< FText > BuildErrors;
                 {
                     SCOPE_CYCLE_COUNTER( STAT_BuildStaticMesh );
-                    StaticMesh->Build( true, &BuildErrors );
-                }
-                for ( int32 BuildErrorIdx = 0; BuildErrorIdx < BuildErrors.Num(); ++BuildErrorIdx )
-                {
-                    const FText & TextError = BuildErrors[ BuildErrorIdx ];
-                    HOUDINI_LOG_MESSAGE(
-                        TEXT( "Creating Static Meshes: Object [%d %s], Geo [%d], Part [%d %s], Split [%d] build error " )
-                        TEXT( "- %s." ),
-                        ObjectInfo.nodeId, *ObjectName, GeoInfo.nodeId, PartIdx, *PartName, SplitId, *( TextError.ToString() ) );
-                }
+                    StaticMesh->Build( false );
+				}
 
                 // Do we need to add simple collisions ?
                 bool bSimpleCollisionAddedToAggregate = false;
@@ -5400,7 +5465,7 @@ FHoudiniEngineUtils::ExtractRawName( const FString & Name )
 #if WITH_EDITOR
 void
 FHoudiniEngineUtils::CreateFaceMaterialArray(
-    const TArray< FStaticMaterial > & Materials, const TArray< int32 > & FaceMaterialIndices,
+	const TArray< UMaterialInterface* > & Materials, const TArray< int32 > & FaceMaterialIndices,
     TArray< char * > & OutStaticMeshFaceMaterials )
 {
     // We need to create list of unique materials.
@@ -5414,7 +5479,7 @@ FHoudiniEngineUtils::CreateFaceMaterialArray(
         for ( int32 MaterialIdx = 0; MaterialIdx < Materials.Num(); ++MaterialIdx )
         {
             UniqueName = nullptr;
-            MaterialInterface = Materials[ MaterialIdx ].MaterialInterface;
+            MaterialInterface = Materials[ MaterialIdx ];
 
             if ( !MaterialInterface )
             {
@@ -5482,7 +5547,7 @@ FHoudiniEngineUtils::ExtractStringPositions( const FString & Positions, TArray< 
         ImportAxis = HoudiniRuntimeSettings->ImportAxis;
     }
 
-    int32 NumCoords = Positions.ParseIntoArray( PointStrings, PositionSeparators, 2 );
+    int32 NumCoords = Positions.ParseIntoArray( &PointStrings, PositionSeparators, 2 );
     for ( int32 CoordIdx = 0; CoordIdx < NumCoords; CoordIdx += 3 )
     {
         FVector Position;
@@ -6063,7 +6128,7 @@ FHoudiniEngineUtils::LocateClipboardActor( const AActor* IgnoreActor, const FStr
     {
         FString PasteString;
 #if WITH_EDITOR
-        FPlatformApplicationMisc::ClipboardPaste( PasteString );
+		FPlatformMisc::ClipboardPaste(PasteString);
 #endif
         Paste = *PasteString;
     }
@@ -6079,7 +6144,7 @@ FHoudiniEngineUtils::LocateClipboardActor( const AActor* IgnoreActor, const FStr
     FString StrLine;
     while ( FParse::Line( &Paste, StrLine ) )
     {
-        StrLine = StrLine.TrimStart();
+        StrLine = StrLine.Trim();
 
         const TCHAR * Str = *StrLine;
         FString ClassName;
@@ -6531,14 +6596,19 @@ FHoudiniEngineUtils::AddAggregateCollisionGeometryToStaticMesh(
     if ( !HoudiniGeoPartObject.bHasCollisionBeenAdded )
         BodySetup->RemoveSimpleCollision();
 
-    BodySetup->AddCollisionFrom( AggregateCollisionGeo );
     BodySetup->CollisionTraceFlag = ECollisionTraceFlag::CTF_UseDefault;
 
     BodySetup->ClearPhysicsMeshes();
     BodySetup->InvalidatePhysicsData();
 
+	//JC: Is this the correct way to add aggregate collision elements?
+	BodySetup->AggGeom.BoxElems.Append(AggregateCollisionGeo.BoxElems);
+	BodySetup->AggGeom.ConvexElems.Append(AggregateCollisionGeo.ConvexElems);
+	BodySetup->AggGeom.SphereElems.Append(AggregateCollisionGeo.SphereElems);
+	BodySetup->AggGeom.SphylElems.Append(AggregateCollisionGeo.SphylElems);
+
 #if WITH_EDITOR
-    RefreshCollisionChange( *StaticMesh );
+    RefreshCollisionChange( StaticMesh );
 #endif
 
     // This geo part will have to be considered as rendered collision
@@ -6568,7 +6638,7 @@ FHoudiniEngineUtils::AddActorsToMeshSocket( UStaticMeshSocket* Socket, UStaticMe
     // Converting the string to a string array using delimiters
     const TCHAR* Delims[] = { TEXT(","), TEXT(";") };
     TArray<FString> ActorStringArray;
-    ActorString.ParseIntoArray( ActorStringArray, Delims, 2 );
+    ActorString.ParseIntoArray( &ActorStringArray, Delims, 2 );
 
     if ( ActorStringArray.Num() <= 0 )
         return false;
@@ -6591,7 +6661,7 @@ FHoudiniEngineUtils::AddActorsToMeshSocket( UStaticMeshSocket* Socket, UStaticMe
                  && Actor->GetActorLabel() != ActorStringArray[ StringIdx ] )
                 continue;
 
-            if ( Actor->IsPendingKillOrUnreachable() )
+            if ( Actor->IsPendingKill() )
                 continue;
 
             Socket->AttachActor( Actor, StaticMeshComponent );
@@ -6971,7 +7041,7 @@ FHoudiniEngineUtils::ApplyUPropertyAttributesOnObject(
 
     // MeshComponent should be either a StaticMeshComponent, an InstancedStaticMeshComponent or an InstancedActorComponent
     UStaticMeshComponent* SMC = Cast< UStaticMeshComponent >( MeshComponent );
-    UInstancedStaticMeshComponent* ISMC = Cast< UInstancedStaticMeshComponent >( MeshComponent );
+    UHierarchicalInstancedStaticMeshComponent* ISMC = Cast< UHierarchicalInstancedStaticMeshComponent >( MeshComponent );
     UHierarchicalInstancedStaticMeshComponent* HISMC = Cast< UHierarchicalInstancedStaticMeshComponent >( MeshComponent );
     UHoudiniInstancedActorComponent* IAC = Cast< UHoudiniInstancedActorComponent >( MeshComponent );
     UHoudiniMeshSplitInstancerComponent* MSPIC = Cast<UHoudiniMeshSplitInstancerComponent>(MeshComponent);
@@ -7759,6 +7829,25 @@ FHoudiniCookParams::FHoudiniCookParams( class UHoudiniAsset* InHoudiniAsset )
 {
     PackageGUID = FGuid::NewGuid();
     TempCookFolder = LOCTEXT( "Temp", "/Game/HoudiniEngine/Temp" );
+}
+
+void 
+FHoudiniEngineUtils::ShowEditorNotification(const FString& message, bool bIsSuccess)
+{
+#if WITH_EDITOR
+	FNotificationInfo Info(FText::AsCultureInvariant(message));
+	Info.FadeInDuration = 0.1f;
+	Info.FadeOutDuration = 1.0f;
+	Info.ExpireDuration = 5.0f;
+	Info.bUseThrobber = false;
+	Info.bUseSuccessFailIcons = false;
+	Info.bUseLargeFont = true;
+	Info.bFireAndForget = false;
+	Info.bAllowThrottleWhenFrameRateIsLow = false;
+	auto NotificationItem = FSlateNotificationManager::Get().AddNotification(Info);
+	NotificationItem->SetCompletionState(bIsSuccess ? SNotificationItem::CS_Success : SNotificationItem::CS_Fail);
+	NotificationItem->ExpireAndFadeout();
+#endif
 }
 
 #undef LOCTEXT_NAMESPACE

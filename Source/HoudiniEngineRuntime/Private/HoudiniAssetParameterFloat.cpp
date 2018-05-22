@@ -32,8 +32,8 @@
 #include "Internationalization.h"
 #define LOCTEXT_NAMESPACE HOUDINI_LOCTEXT_NAMESPACE 
 
-UHoudiniAssetParameterFloat::UHoudiniAssetParameterFloat( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetParameterFloat::UHoudiniAssetParameterFloat( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
     , ValueMin( TNumericLimits< float >::Lowest() )
     , ValueMax( TNumericLimits< float >::Max() )
     , ValueUIMin( TNumericLimits< float >::Lowest() )
@@ -81,8 +81,8 @@ UHoudiniAssetParameterFloat::Create(
         }
     }
 
-    UHoudiniAssetParameterFloat * HoudiniAssetParameterFloat = NewObject< UHoudiniAssetParameterFloat >(
-        Outer, UHoudiniAssetParameterFloat::StaticClass(), NAME_None, RF_Public | RF_Transactional );
+    UHoudiniAssetParameterFloat * HoudiniAssetParameterFloat = ConstructObject< UHoudiniAssetParameterFloat >(
+		UHoudiniAssetParameterFloat::StaticClass(), Outer, NAME_None, RF_Public | RF_Transactional);
 
     HoudiniAssetParameterFloat->CreateParameter( InPrimaryObject, InParentParameter, InNodeId, ParmInfo );
     return HoudiniAssetParameterFloat;

@@ -113,15 +113,18 @@ FHoudiniHandleComponentVisualizer::DrawVisualization(
         // draw the scale box
         FTransform BoxTransform = HandleComponent->GetComponentTransform();
         const float BoxRad = 50.f;
-        const FBox Box( FVector( -BoxRad, -BoxRad, -BoxRad ), FVector( BoxRad, BoxRad, BoxRad ) );
-        DrawWireBox( PDI, BoxTransform.ToMatrixWithScale(), Box, IsActive ? ActiveColor : InactiveColor, SDPG_Foreground );
+        FBox Box( FVector( -BoxRad, -BoxRad, -BoxRad ), FVector( BoxRad, BoxRad, BoxRad ) );
+		//JC: equiv visuals?
+		Box = Box.TransformBy(BoxTransform.ToMatrixWithScale());
+		DrawWireBox(PDI, Box, IsActive ? ActiveColor : InactiveColor, SDPG_Foreground);
+        //DrawWireBox( PDI, BoxTransform.ToMatrixWithScale(), Box, IsActive ? ActiveColor : InactiveColor, SDPG_Foreground );
     }
     PDI->SetHitProxy( nullptr );
 }
 
 bool
-FHoudiniHandleComponentVisualizer::VisProxyHandleClick( 
-    FEditorViewportClient* InViewportClient, HComponentVisProxy* VisProxy, const FViewportClick& Click )
+FHoudiniHandleComponentVisualizer::VisProxyHandleClick(
+	FLevelEditorViewportClient* InViewportClient, HComponentVisProxy* VisProxy, const FViewportClick& Click)
 {
     bEditing = false;
     

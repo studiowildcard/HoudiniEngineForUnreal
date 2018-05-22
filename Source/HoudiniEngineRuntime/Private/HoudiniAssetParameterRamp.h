@@ -27,6 +27,8 @@
 #include "Tickable.h"
 #include "Curves/CurveFloat.h"
 #include "Curves/CurveLinearColor.h"
+#include "HoudiniAssetParameterRampCurveColor.h"
+#include "HoudiniAssetParameterRampCurveFloat.h"
 #include "HoudiniAssetParameterRamp.generated.h"
 
 
@@ -36,99 +38,6 @@ class UHoudiniAssetParameterFloat;
 class UHoudiniAssetParameterColor;
 class UHoudiniAssetParameterChoice;
 class SHoudiniAssetParameterRampCurveEditor;
-
-UCLASS(BlueprintType)
-class HOUDINIENGINERUNTIME_API UHoudiniAssetParameterRampCurveFloat : public UCurveFloat
-{
-    GENERATED_UCLASS_BODY()
-
-    public:
-
-        /** Set parent ramp parameter. **/
-        void SetParentRampParameter( UHoudiniAssetParameterRamp * InHoudiniAssetParameterRamp );
-
-    /** FCurveOwnerInterface methods. **/
-    public:
-
-#if WITH_EDITOR
-
-        virtual void OnCurveChanged( const TArray< FRichCurveEditInfo > & ChangedCurveEditInfos ) override;
-
-#endif
-
-    protected:
-
-        /** Parent ramp parameter. **/
-        TWeakObjectPtr<UHoudiniAssetParameterRamp> HoudiniAssetParameterRamp;
-};
-
-namespace EHoudiniAssetParameterRampCurveColorEvent
-{
-    enum Type
-    {
-        None = 0,
-        MoveStop,
-        ChangeStopTime,
-        ChangeStopColor,
-        AddStop,
-        RemoveStop
-    };
-}
-
-UCLASS( BlueprintType )
-class HOUDINIENGINERUNTIME_API UHoudiniAssetParameterRampCurveColor : public UCurveLinearColor, public FTickableGameObject
-{
-    GENERATED_UCLASS_BODY()
-
-
-    public:
-
-        /** Set parent ramp parameter. **/
-        void SetParentRampParameter( UHoudiniAssetParameterRamp * InHoudiniAssetParameterRamp );
-
-        /** Return the current type of event. **/
-        EHoudiniAssetParameterRampCurveColorEvent::Type GetColorEvent() const;
-
-        /** Reset the current type of event. **/
-        void ResetColorEvent();
-
-
-    /** FCurveOwnerInterface methods. **/
-    public:
-
-#if WITH_EDITOR
-
-        virtual void OnCurveChanged( const TArray< FRichCurveEditInfo > & ChangedCurveEditInfos ) override;
-
-#endif
-
-    /** UObject methods. **/
-    public:
-
-        virtual bool Modify( bool bAlwaysMarkDirty );
-
-    /** FTickableGameObject methods. **/
-    public:
-
-        virtual bool IsTickableInEditor() const;
-        virtual bool IsTickableWhenPaused() const;
-        virtual void Tick( float DeltaTime ) override;
-        virtual TStatId GetStatId() const override;
-        virtual bool IsTickable() const override;
-
-    protected:
-
-        /** Attempt to map current editor transaction type to curve transactions. **/
-        EHoudiniAssetParameterRampCurveColorEvent::Type GetEditorCurveTransaction() const;
-
-    protected:
-
-        /** Parent ramp parameter. **/
-        TWeakObjectPtr<UHoudiniAssetParameterRamp> HoudiniAssetParameterRamp;
-
-        /** Current event. **/
-        EHoudiniAssetParameterRampCurveColorEvent::Type ColorEvent;
-};
 
 namespace EHoudiniAssetParameterRampKeyInterpolation
 {

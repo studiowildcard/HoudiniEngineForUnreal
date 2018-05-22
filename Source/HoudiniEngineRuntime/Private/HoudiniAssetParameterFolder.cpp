@@ -26,8 +26,8 @@
 #include "HoudiniEngineRuntimePrivatePCH.h"
 #include "HoudiniAssetComponent.h"
 
-UHoudiniAssetParameterFolder::UHoudiniAssetParameterFolder( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetParameterFolder::UHoudiniAssetParameterFolder( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
 {}
 
 UHoudiniAssetParameterFolder *
@@ -49,8 +49,8 @@ UHoudiniAssetParameterFolder::Create(
     }
 
     UHoudiniAssetParameterFolder * HoudiniAssetParameterFolder =
-        NewObject< UHoudiniAssetParameterFolder >(
-            Outer, UHoudiniAssetParameterFolder::StaticClass(), NAME_None, RF_Public | RF_Transactional );
+        ConstructObject< UHoudiniAssetParameterFolder >(
+		UHoudiniAssetParameterFolder::StaticClass(), Outer, NAME_None, RF_Public | RF_Transactional);
 
     HoudiniAssetParameterFolder->CreateParameter( InPrimaryObject, InParentParameter, InNodeId, ParmInfo );
     return HoudiniAssetParameterFolder;

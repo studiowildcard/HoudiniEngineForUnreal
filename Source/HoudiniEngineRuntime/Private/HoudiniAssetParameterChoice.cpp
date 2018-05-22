@@ -32,8 +32,8 @@
 #include "Internationalization.h"
 #define LOCTEXT_NAMESPACE HOUDINI_LOCTEXT_NAMESPACE 
 
-UHoudiniAssetParameterChoice::UHoudiniAssetParameterChoice( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetParameterChoice::UHoudiniAssetParameterChoice( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
     , CurrentValue( 0 )
     , bStringChoiceList( false )
 {
@@ -58,8 +58,8 @@ UHoudiniAssetParameterChoice::Create(
         }
     }
 
-    UHoudiniAssetParameterChoice * HoudiniAssetParameterChoice = NewObject<UHoudiniAssetParameterChoice>(
-        Outer, UHoudiniAssetParameterChoice::StaticClass(), NAME_None, RF_Public | RF_Transactional );
+    UHoudiniAssetParameterChoice * HoudiniAssetParameterChoice = ConstructObject<UHoudiniAssetParameterChoice>(
+		UHoudiniAssetParameterChoice::StaticClass(), Outer, NAME_None, RF_Public | RF_Transactional);
 
     HoudiniAssetParameterChoice->CreateParameter( InPrimaryObject, InParentParameter, InNodeId, ParmInfo );
     return HoudiniAssetParameterChoice;

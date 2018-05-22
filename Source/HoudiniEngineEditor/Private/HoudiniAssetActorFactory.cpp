@@ -40,8 +40,8 @@
 #include "Internationalization.h"
 #define LOCTEXT_NAMESPACE HOUDINI_LOCTEXT_NAMESPACE 
 
-UHoudiniAssetActorFactory::UHoudiniAssetActorFactory( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetActorFactory::UHoudiniAssetActorFactory( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
 {
     DisplayName = LOCTEXT( "HoudiniAssetDisplayName", "Houdini Engine Asset" );
     NewActorClass = AHoudiniAssetActor::StaticClass();

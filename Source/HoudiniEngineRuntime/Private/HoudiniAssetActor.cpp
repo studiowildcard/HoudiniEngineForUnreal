@@ -37,8 +37,8 @@
 #include "HoudiniEngine.h"
 #include "HoudiniEngineUtils.h"
 
-AHoudiniAssetActor::AHoudiniAssetActor( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+AHoudiniAssetActor::AHoudiniAssetActor( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
     , CurrentPlayTime( 0.0f )
 {
     bCanBeDamaged = false;
@@ -47,7 +47,7 @@ AHoudiniAssetActor::AHoudiniAssetActor( const FObjectInitializer & ObjectInitial
 
     // Create Houdini component and attach it to a root component.
     HoudiniAssetComponent =
-        ObjectInitializer.CreateDefaultSubobject< UHoudiniAssetComponent >( this, TEXT("HoudiniAssetComponent" ) );
+        PCIP.CreateDefaultSubobject< UHoudiniAssetComponent >( this, TEXT("HoudiniAssetComponent" ) );
 
     HoudiniAssetComponent->SetCollisionProfileName( UCollisionProfile::BlockAll_ProfileName );
     RootComponent = HoudiniAssetComponent;
@@ -113,7 +113,7 @@ AHoudiniAssetActor::ShouldImport( FString * ActorPropString, bool IsMovingLevel 
 
     // We also need to copy actor label.
     const FString & CopiedActorLabel = CopiedActor->GetActorLabel();
-    FActorLabelUtilities::SetActorLabelUnique( this, CopiedActorLabel );
+	GEditor->SetActorLabelUnique(this, CopiedActorLabel);
 
     return true;
 }
@@ -162,4 +162,4 @@ AHoudiniAssetActor::PostEditChangeProperty(FPropertyChangedEvent & PropertyChang
     }
 }
 
-#endif
+#endif // WITH_EDITOR

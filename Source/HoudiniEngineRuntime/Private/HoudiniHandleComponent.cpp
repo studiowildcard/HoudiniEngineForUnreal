@@ -72,8 +72,8 @@ UHoudiniHandleComponent::GetHapiXYZOrder( const TSharedPtr< FString > & StrPtr )
     return HAPI_XYZ;
 }
 
-UHoudiniHandleComponent::UHoudiniHandleComponent( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniHandleComponent::UHoudiniHandleComponent( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
 {}
 
 UHoudiniHandleComponent::~UHoudiniHandleComponent()
@@ -134,8 +134,8 @@ UHoudiniHandleComponent::Construct(
 
     HapiEulerXform.rstOrder = GetHapiRSTOrder( RSTOrderStrPtr );
     HapiEulerXform.rotationOrder = GetHapiXYZOrder( XYZOrderStrPtr );
-    constexpr float MaxFloat = TNumericLimits<float>::Max();
-    constexpr float MinFloat = TNumericLimits<float>::Min();
+    const float MaxFloat = TNumericLimits<float>::Max();
+    const float MinFloat = TNumericLimits<float>::Min();
     HapiEulerXform.scale[ 0 ] = FMath::Clamp( HapiEulerXform.scale[ 0 ], MinFloat, MaxFloat );
     HapiEulerXform.scale[ 1 ] = FMath::Clamp( HapiEulerXform.scale[ 1 ], MinFloat, MaxFloat );
     HapiEulerXform.scale[ 2 ] = FMath::Clamp( HapiEulerXform.scale[ 2 ], MinFloat, MaxFloat );
@@ -187,8 +187,8 @@ UHoudiniHandleComponent::UpdateTransformParameters()
     XformParms[ EXformParameter::RY ] = FMath::RadiansToDegrees(HapiEulerXform.rotationEuler[ 1 ]);
     XformParms[ EXformParameter::RZ ] = FMath::RadiansToDegrees(HapiEulerXform.rotationEuler[ 2 ]);
 
-    constexpr float MaxFloat = TNumericLimits<float>::Max();
-    constexpr float MinFloat = TNumericLimits<float>::Min();
+    const float MaxFloat = TNumericLimits<float>::Max();
+    const float MinFloat = TNumericLimits<float>::Min();
     HapiEulerXform.scale[ 0 ] = FMath::Clamp( HapiEulerXform.scale[ 0 ], MinFloat, MaxFloat );
     HapiEulerXform.scale[ 1 ] = FMath::Clamp( HapiEulerXform.scale[ 1 ], MinFloat, MaxFloat );
     HapiEulerXform.scale[ 2 ] = FMath::Clamp( HapiEulerXform.scale[ 2 ], MinFloat, MaxFloat );

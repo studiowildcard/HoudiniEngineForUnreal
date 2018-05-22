@@ -33,7 +33,7 @@
 #include "Materials/MaterialInstance.h"
 #include "Materials/MaterialInstanceConstant.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
-#include "MetaData.h"
+//#include "MetaData.h"
 #if WITH_EDITOR
     #include "Materials/Material.h"
     #include "Materials/MaterialInstance.h"
@@ -359,7 +359,7 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentDiffuse(
 
     // Diffuse texture creation parameters.
     FCreateTexture2DParameters CreateTexture2DParameters;
-    CreateTexture2DParameters.SourceGuidHash = FGuid();
+    //CreateTexture2DParameters.SourceGuidHash = FGuid(); //JC: is there a replacement for this?
     CreateTexture2DParameters.bUseAlpha = false;
     CreateTexture2DParameters.CompressionSettings = TC_Default;
     CreateTexture2DParameters.bDeferCompression = true;
@@ -386,8 +386,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentDiffuse(
     // If uniform color expression does not exist, create it.
     if ( !ExpressionConstant4Vector )
     {
-        ExpressionConstant4Vector = NewObject< UMaterialExpressionVectorParameter >(
-            Material, UMaterialExpressionVectorParameter::StaticClass(), NAME_None, ObjectFlag );
+        ExpressionConstant4Vector = ConstructObject< UMaterialExpressionVectorParameter >(
+			UMaterialExpressionVectorParameter::StaticClass(), Material, NAME_None, ObjectFlag);
         ExpressionConstant4Vector->DefaultValue = FLinearColor::White;
     }
 
@@ -402,8 +402,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentDiffuse(
     // If vertex color expression does not exist, create it.
     if ( !ExpressionVertexColor )
     {
-        ExpressionVertexColor = NewObject< UMaterialExpressionVertexColor >(
-            Material, UMaterialExpressionVertexColor::StaticClass(), NAME_None, ObjectFlag );
+		ExpressionVertexColor = ConstructObject< UMaterialExpressionVertexColor >(
+			UMaterialExpressionVertexColor::StaticClass(), Material, NAME_None, ObjectFlag);
         ExpressionVertexColor->Desc = GeneratingParameterNameVertexColor;
     }
 
@@ -413,8 +413,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentDiffuse(
     // Material should have at least one multiply expression.
     UMaterialExpressionMultiply * MaterialExpressionMultiply = Cast< UMaterialExpressionMultiply >( MaterialExpression );
     if ( !MaterialExpressionMultiply )
-        MaterialExpressionMultiply = NewObject< UMaterialExpressionMultiply >(
-            Material, UMaterialExpressionMultiply::StaticClass(), NAME_None, ObjectFlag );
+		MaterialExpressionMultiply = ConstructObject< UMaterialExpressionMultiply >(
+			UMaterialExpressionMultiply::StaticClass(), Material, NAME_None, ObjectFlag);
 
     // Add expression.
     Material->Expressions.Add( MaterialExpressionMultiply );
@@ -548,8 +548,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentDiffuse(
                 // Create diffuse sampling expression, if needed.
                 if ( !ExpressionTextureSample )
                 {
-                    ExpressionTextureSample = NewObject< UMaterialExpressionTextureSampleParameter2D >(
-                        Material, UMaterialExpressionTextureSampleParameter2D::StaticClass(), NAME_None, ObjectFlag );
+					ExpressionTextureSample = ConstructObject< UMaterialExpressionTextureSampleParameter2D >(
+						UMaterialExpressionTextureSampleParameter2D::StaticClass(), Material, NAME_None, ObjectFlag);
                 }
 
                 // Record generating parameter.
@@ -596,8 +596,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentDiffuse(
     {
         if ( !MaterialExpressionMultiplySecondary )
         {
-            MaterialExpressionMultiplySecondary = NewObject< UMaterialExpressionMultiply >(
-                Material, UMaterialExpressionMultiply::StaticClass(), NAME_None, ObjectFlag );
+			MaterialExpressionMultiplySecondary = ConstructObject< UMaterialExpressionMultiply >(
+				UMaterialExpressionMultiply::StaticClass(), Material, NAME_None, ObjectFlag);
 
             // Add expression.
             Material->Expressions.Add( MaterialExpressionMultiplySecondary );
@@ -621,6 +621,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentDiffuse(
     // Create multiplication expression which has uniform color and vertex color.
     MaterialExpressionMultiply->A.Expression = ExpressionConstant4Vector;
     MaterialExpressionMultiply->B.Expression = ExpressionVertexColor;
+
+#if WITH_EDITORONLY_DATA
 
     ExpressionConstant4Vector->MaterialExpressionEditorX =
         FHoudiniEngineMaterialUtils::MaterialExpressionNodeX -
@@ -668,6 +670,13 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentDiffuse(
                 ExpressionConstant4Vector->MaterialExpressionEditorY ) / 2;
     }
 
+#else
+
+	//JC
+	check(false && "Failed to set up material expression node!");
+
+#endif
+
     return true;
 }
 
@@ -694,7 +703,7 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentOpacityMask(
 
     // Opacity texture creation parameters.
     FCreateTexture2DParameters CreateTexture2DParameters;
-    CreateTexture2DParameters.SourceGuidHash = FGuid();
+    //CreateTexture2DParameters.SourceGuidHash = FGuid();
     CreateTexture2DParameters.bUseAlpha = false;
     CreateTexture2DParameters.CompressionSettings = TC_Grayscale;
     CreateTexture2DParameters.bDeferCompression = true;
@@ -803,8 +812,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentOpacityMask(
                 // Create opacity sampling expression, if needed.
                 if ( !ExpressionTextureOpacitySample )
                 {
-                    ExpressionTextureOpacitySample = NewObject< UMaterialExpressionTextureSampleParameter2D >(
-                        Material, UMaterialExpressionTextureSampleParameter2D::StaticClass(), NAME_None, ObjectFlag );
+                    ExpressionTextureOpacitySample = ConstructObject< UMaterialExpressionTextureSampleParameter2D >(
+						UMaterialExpressionTextureSampleParameter2D::StaticClass(), Material, NAME_None, ObjectFlag);
                 }
 
                 // Record generating parameter.
@@ -813,10 +822,11 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentOpacityMask(
                 ExpressionTextureOpacitySample->Texture = TextureOpacity;
                 ExpressionTextureOpacitySample->SamplerType = SAMPLERTYPE_Grayscale;
 
+#if WITH_EDITORONLY_DATA
                 // Offset node placement.
-                ExpressionTextureOpacitySample->MaterialExpressionEditorX =
-                    FHoudiniEngineMaterialUtils::MaterialExpressionNodeX;
+                ExpressionTextureOpacitySample->MaterialExpressionEditorX = FHoudiniEngineMaterialUtils::MaterialExpressionNodeX;
                 ExpressionTextureOpacitySample->MaterialExpressionEditorY = MaterialNodeY;
+#endif
                 MaterialNodeY += FHoudiniEngineMaterialUtils::MaterialExpressionNodeStepY;
 
                 // Add expression.
@@ -878,7 +888,7 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentOpacity(
 
     // Opacity texture creation parameters.
     FCreateTexture2DParameters CreateTexture2DParameters;
-    CreateTexture2DParameters.SourceGuidHash = FGuid();
+    //CreateTexture2DParameters.SourceGuidHash = FGuid();
     CreateTexture2DParameters.bUseAlpha = false;
     CreateTexture2DParameters.CompressionSettings = TC_Grayscale;
     CreateTexture2DParameters.bDeferCompression = true;
@@ -897,6 +907,7 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentOpacity(
                         MaterialExpressionDiffuse,
                         UMaterialExpressionTextureSampleParameter2D::StaticClass() ) );
 
+#if WITH_EDITORONLY_DATA
             // See if there's an alpha plane in this expression's texture.
             if ( ExpressionTextureDiffuseSample )
             {
@@ -908,6 +919,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentOpacity(
                     bNeedsTranslucency = true;
                 }
             }
+#endif
+
         }
     }
 
@@ -940,8 +953,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentOpacity(
             {
                 if ( !ExpressionScalarOpacity )
                 {
-                    ExpressionScalarOpacity = NewObject< UMaterialExpressionScalarParameter >(
-                        Material, UMaterialExpressionScalarParameter::StaticClass(), NAME_None, ObjectFlag );
+                    ExpressionScalarOpacity = ConstructObject< UMaterialExpressionScalarParameter >(
+						UMaterialExpressionScalarParameter::StaticClass(), Material, NAME_None, ObjectFlag );
                 }
 
                 // Clamp retrieved value.
@@ -950,8 +963,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentOpacity(
 
                 // Set expression fields.
                 ExpressionScalarOpacity->DefaultValue = OpacityValue;
-                ExpressionScalarOpacity->SliderMin = 0.0f;
-                ExpressionScalarOpacity->SliderMax = 1.0f;
+                //ExpressionScalarOpacity->SliderMin = 0.0f;
+                //ExpressionScalarOpacity->SliderMax = 1.0f;
                 ExpressionScalarOpacity->Desc = GeneratingParameterNameScalar;
                 ExpressionScalarOpacity->ParameterName = *GeneratingParameterNameScalar;
 
@@ -977,8 +990,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentOpacity(
                     UMaterialExpressionMultiply::StaticClass() ) );
 
         if ( !ExpressionMultiply )
-            ExpressionMultiply = NewObject< UMaterialExpressionMultiply >(
-                Material, UMaterialExpressionMultiply::StaticClass(), NAME_None, ObjectFlag );
+            ExpressionMultiply = ConstructObject< UMaterialExpressionMultiply >(
+				UMaterialExpressionMultiply::StaticClass(), Material, NAME_None, ObjectFlag);
 
         Material->Expressions.Add( ExpressionMultiply );
 
@@ -995,12 +1008,14 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentOpacity(
         Material->Opacity.MaskB = 0;
         Material->Opacity.MaskA = 1;
 
+#if WITH_EDITORONLY_DATA
         ExpressionMultiply->MaterialExpressionEditorX = FHoudiniEngineMaterialUtils::MaterialExpressionNodeX;
         ExpressionMultiply->MaterialExpressionEditorY = MaterialNodeY;
 
         ExpressionScalarOpacity->MaterialExpressionEditorX =
             FHoudiniEngineMaterialUtils::MaterialExpressionNodeX - FHoudiniEngineMaterialUtils::MaterialExpressionNodeStepX;
         ExpressionScalarOpacity->MaterialExpressionEditorY = MaterialNodeY;
+#endif
         MaterialNodeY += FHoudiniEngineMaterialUtils::MaterialExpressionNodeStepY;
 
         bExpressionCreated = true;
@@ -1009,8 +1024,10 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentOpacity(
     {
         Material->Opacity.Expression = ExpressionScalarOpacity;
 
+#if WITH_EDITORONLY_DATA
         ExpressionScalarOpacity->MaterialExpressionEditorX = FHoudiniEngineMaterialUtils::MaterialExpressionNodeX;
         ExpressionScalarOpacity->MaterialExpressionEditorY = MaterialNodeY;
+#endif
         MaterialNodeY += FHoudiniEngineMaterialUtils::MaterialExpressionNodeStepY;
 
         bExpressionCreated = true;
@@ -1051,7 +1068,7 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentNormal(
 
     // Normal texture creation parameters.
     FCreateTexture2DParameters CreateTexture2DParameters;
-    CreateTexture2DParameters.SourceGuidHash = FGuid();
+    //CreateTexture2DParameters.SourceGuidHash = FGuid();
     CreateTexture2DParameters.bUseAlpha = false;
     CreateTexture2DParameters.CompressionSettings = TC_Normalmap;
     CreateTexture2DParameters.bDeferCompression = true;
@@ -1180,8 +1197,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentNormal(
 
                 // Create normal sampling expression, if needed.
                 if ( !ExpressionNormal )
-                    ExpressionNormal = NewObject< UMaterialExpressionTextureSampleParameter2D >(
-                        Material, UMaterialExpressionTextureSampleParameter2D::StaticClass(), NAME_None, ObjectFlag );
+                    ExpressionNormal = ConstructObject< UMaterialExpressionTextureSampleParameter2D >(
+						UMaterialExpressionTextureSampleParameter2D::StaticClass(), Material, NAME_None, ObjectFlag);
 
                 // Record generating parameter.
                 ExpressionNormal->Desc = GeneratingParameterName;
@@ -1190,9 +1207,11 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentNormal(
                 ExpressionNormal->Texture = TextureNormal;
                 ExpressionNormal->SamplerType = SAMPLERTYPE_Normal;
 
+#if WITH_EDITORONLY_DATA
                 // Offset node placement.
                 ExpressionNormal->MaterialExpressionEditorX = FHoudiniEngineMaterialUtils::MaterialExpressionNodeX;
                 ExpressionNormal->MaterialExpressionEditorY = MaterialNodeY;
+#endif
                 MaterialNodeY += FHoudiniEngineMaterialUtils::MaterialExpressionNodeStepY;
 
                 // Set normal space.
@@ -1301,8 +1320,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentNormal(
 
                     // Create normal sampling expression, if needed.
                     if ( !ExpressionNormal )
-                        ExpressionNormal = NewObject< UMaterialExpressionTextureSampleParameter2D >(
-                            Material, UMaterialExpressionTextureSampleParameter2D::StaticClass(), NAME_None, ObjectFlag );
+                        ExpressionNormal = ConstructObject< UMaterialExpressionTextureSampleParameter2D >(
+							UMaterialExpressionTextureSampleParameter2D::StaticClass(), Material, NAME_None, ObjectFlag);
 
                     // Record generating parameter.
                     ExpressionNormal->Desc = GeneratingParameterName;
@@ -1311,9 +1330,11 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentNormal(
                     ExpressionNormal->Texture = TextureNormal;
                     ExpressionNormal->SamplerType = SAMPLERTYPE_Normal;
 
+#if WITH_EDITORONLY_DATA
                     // Offset node placement.
                     ExpressionNormal->MaterialExpressionEditorX = FHoudiniEngineMaterialUtils::MaterialExpressionNodeX;
                     ExpressionNormal->MaterialExpressionEditorY = MaterialNodeY;
+#endif
                     MaterialNodeY += FHoudiniEngineMaterialUtils::MaterialExpressionNodeStepY;
 
                     // Set normal space.
@@ -1357,7 +1378,7 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentSpecular(
 
     // Specular texture creation parameters.
     FCreateTexture2DParameters CreateTexture2DParameters;
-    CreateTexture2DParameters.SourceGuidHash = FGuid();
+    //CreateTexture2DParameters.SourceGuidHash = FGuid();
     CreateTexture2DParameters.bUseAlpha = false;
     CreateTexture2DParameters.CompressionSettings = TC_Grayscale;
     CreateTexture2DParameters.bDeferCompression = true;
@@ -1454,8 +1475,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentSpecular(
                 // Create specular sampling expression, if needed.
                 if ( !ExpressionSpecular )
                 {
-                    ExpressionSpecular = NewObject< UMaterialExpressionTextureSampleParameter2D >(
-                        Material, UMaterialExpressionTextureSampleParameter2D::StaticClass(), NAME_None, ObjectFlag );
+                    ExpressionSpecular = ConstructObject< UMaterialExpressionTextureSampleParameter2D >(
+						UMaterialExpressionTextureSampleParameter2D::StaticClass(), Material, NAME_None, ObjectFlag);
                 }
 
                 // Record generating parameter.
@@ -1465,9 +1486,11 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentSpecular(
                 ExpressionSpecular->Texture = TextureSpecular;
                 ExpressionSpecular->SamplerType = SAMPLERTYPE_LinearGrayscale;
 
+#if WITH_EDITORONLY_DATA
                 // Offset node placement.
                 ExpressionSpecular->MaterialExpressionEditorX = FHoudiniEngineMaterialUtils::MaterialExpressionNodeX;
                 ExpressionSpecular->MaterialExpressionEditorY = MaterialNodeY;
+#endif
                 MaterialNodeY += FHoudiniEngineMaterialUtils::MaterialExpressionNodeStepY;
 
                 // Assign expression to material.
@@ -1522,8 +1545,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentSpecular(
                     Material->Specular.Expression = nullptr;
                 }
 
-                ExpressionSpecularColor = NewObject< UMaterialExpressionVectorParameter >(
-                    Material, UMaterialExpressionVectorParameter::StaticClass(), NAME_None, ObjectFlag );
+                ExpressionSpecularColor = ConstructObject< UMaterialExpressionVectorParameter >(
+					UMaterialExpressionVectorParameter::StaticClass(), Material, NAME_None, ObjectFlag);
             }
 
             // Record generating parameter.
@@ -1532,9 +1555,11 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentSpecular(
 
             ExpressionSpecularColor->DefaultValue = Color;
 
+#if WITH_EDITORONLY_DATA
             // Offset node placement.
             ExpressionSpecularColor->MaterialExpressionEditorX = FHoudiniEngineMaterialUtils::MaterialExpressionNodeX;
             ExpressionSpecularColor->MaterialExpressionEditorY = MaterialNodeY;
+#endif
             MaterialNodeY += FHoudiniEngineMaterialUtils::MaterialExpressionNodeStepY;
 
             // Assign expression to material.
@@ -1565,7 +1590,7 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentRoughness(
 
     // Roughness texture creation parameters.
     FCreateTexture2DParameters CreateTexture2DParameters;
-    CreateTexture2DParameters.SourceGuidHash = FGuid();
+    //CreateTexture2DParameters.SourceGuidHash = FGuid();
     CreateTexture2DParameters.bUseAlpha = false;
     CreateTexture2DParameters.CompressionSettings = TC_Grayscale;
     CreateTexture2DParameters.bDeferCompression = true;
@@ -1661,8 +1686,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentRoughness(
 
                 // Create roughness sampling expression, if needed.
                 if ( !ExpressionRoughness )
-                    ExpressionRoughness = NewObject< UMaterialExpressionTextureSampleParameter2D >(
-                        Material, UMaterialExpressionTextureSampleParameter2D::StaticClass(), NAME_None, ObjectFlag );
+                    ExpressionRoughness = ConstructObject< UMaterialExpressionTextureSampleParameter2D >(
+						UMaterialExpressionTextureSampleParameter2D::StaticClass(), Material, NAME_None, ObjectFlag );
 
                 // Record generating parameter.
                 ExpressionRoughness->Desc = GeneratingParameterName;
@@ -1671,9 +1696,11 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentRoughness(
                 ExpressionRoughness->Texture = TextureRoughness;
                 ExpressionRoughness->SamplerType = SAMPLERTYPE_LinearGrayscale;
 
+#if WITH_EDITORONLY_DATA
                 // Offset node placement.
                 ExpressionRoughness->MaterialExpressionEditorX = FHoudiniEngineMaterialUtils::MaterialExpressionNodeX;
                 ExpressionRoughness->MaterialExpressionEditorY = MaterialNodeY;
+#endif
                 MaterialNodeY += FHoudiniEngineMaterialUtils::MaterialExpressionNodeStepY;
 
                 // Assign expression to material.
@@ -1728,8 +1755,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentRoughness(
                     Material->Roughness.Expression = nullptr;
                 }
 
-                ExpressionRoughnessValue = NewObject< UMaterialExpressionScalarParameter >(
-                    Material, UMaterialExpressionScalarParameter::StaticClass(), NAME_None, ObjectFlag );
+                ExpressionRoughnessValue = ConstructObject< UMaterialExpressionScalarParameter >(
+					UMaterialExpressionScalarParameter::StaticClass(), Material, NAME_None, ObjectFlag);
             }
 
             // Record generating parameter.
@@ -1737,12 +1764,14 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentRoughness(
             ExpressionRoughnessValue->ParameterName = *GeneratingParameterName;
 
             ExpressionRoughnessValue->DefaultValue = RoughnessValue;
-            ExpressionRoughnessValue->SliderMin = 0.0f;
-            ExpressionRoughnessValue->SliderMax = 1.0f;
+            //ExpressionRoughnessValue->SliderMin = 0.0f;
+            //ExpressionRoughnessValue->SliderMax = 1.0f;
 
+#if WITH_EDITORONLY_DATA
             // Offset node placement.
             ExpressionRoughnessValue->MaterialExpressionEditorX = FHoudiniEngineMaterialUtils::MaterialExpressionNodeX;
             ExpressionRoughnessValue->MaterialExpressionEditorY = MaterialNodeY;
+#endif
             MaterialNodeY += FHoudiniEngineMaterialUtils::MaterialExpressionNodeStepY;
 
             // Assign expression to material.
@@ -1773,7 +1802,7 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentMetallic(
 
     // Metallic texture creation parameters.
     FCreateTexture2DParameters CreateTexture2DParameters;
-    CreateTexture2DParameters.SourceGuidHash = FGuid();
+    //CreateTexture2DParameters.SourceGuidHash = FGuid();
     CreateTexture2DParameters.bUseAlpha = false;
     CreateTexture2DParameters.CompressionSettings = TC_Grayscale;
     CreateTexture2DParameters.bDeferCompression = true;
@@ -1861,8 +1890,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentMetallic(
 
                 // Create metallic sampling expression, if needed.
                 if ( !ExpressionMetallic )
-                    ExpressionMetallic = NewObject< UMaterialExpressionTextureSampleParameter2D >(
-                        Material, UMaterialExpressionTextureSampleParameter2D::StaticClass(), NAME_None, ObjectFlag );
+                    ExpressionMetallic = ConstructObject< UMaterialExpressionTextureSampleParameter2D >(
+						UMaterialExpressionTextureSampleParameter2D::StaticClass(), Material, NAME_None, ObjectFlag);
 
                 // Record generating parameter.
                 ExpressionMetallic->Desc = GeneratingParameterName;
@@ -1871,9 +1900,11 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentMetallic(
                 ExpressionMetallic->Texture = TextureMetallic;
                 ExpressionMetallic->SamplerType = SAMPLERTYPE_LinearGrayscale;
 
+#if WITH_EDITORONLY_DATA
                 // Offset node placement.
                 ExpressionMetallic->MaterialExpressionEditorX = FHoudiniEngineMaterialUtils::MaterialExpressionNodeX;
                 ExpressionMetallic->MaterialExpressionEditorY = MaterialNodeY;
+#endif
                 MaterialNodeY += FHoudiniEngineMaterialUtils::MaterialExpressionNodeStepY;
 
                 // Assign expression to material.
@@ -1918,8 +1949,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentMetallic(
                     Material->Metallic.Expression = nullptr;
                 }
 
-                ExpressionMetallicValue = NewObject< UMaterialExpressionScalarParameter >(
-                    Material, UMaterialExpressionScalarParameter::StaticClass(), NAME_None, ObjectFlag );
+                ExpressionMetallicValue = ConstructObject< UMaterialExpressionScalarParameter >(
+					UMaterialExpressionScalarParameter::StaticClass(), Material, NAME_None, ObjectFlag);
             }
 
             // Record generating parameter.
@@ -1927,12 +1958,14 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentMetallic(
             ExpressionMetallicValue->ParameterName = *GeneratingParameterName;
 
             ExpressionMetallicValue->DefaultValue = MetallicValue;
-            ExpressionMetallicValue->SliderMin = 0.0f;
-            ExpressionMetallicValue->SliderMax = 1.0f;
+            //ExpressionMetallicValue->SliderMin = 0.0f;
+            //ExpressionMetallicValue->SliderMax = 1.0f;
 
+#if WITH_EDITORONLY_DATA
             // Offset node placement.
             ExpressionMetallicValue->MaterialExpressionEditorX = FHoudiniEngineMaterialUtils::MaterialExpressionNodeX;
             ExpressionMetallicValue->MaterialExpressionEditorY = MaterialNodeY;
+#endif
             MaterialNodeY += FHoudiniEngineMaterialUtils::MaterialExpressionNodeStepY;
 
             // Assign expression to material.
@@ -1964,7 +1997,7 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentEmissive(
 
     // Emissive texture creation parameters.
     FCreateTexture2DParameters CreateTexture2DParameters;
-    CreateTexture2DParameters.SourceGuidHash = FGuid();
+    //CreateTexture2DParameters.SourceGuidHash = FGuid();
     CreateTexture2DParameters.bUseAlpha = false;
     CreateTexture2DParameters.CompressionSettings = TC_Grayscale;
     CreateTexture2DParameters.bDeferCompression = true;
@@ -2052,8 +2085,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentEmissive(
 
                 // Create emissive sampling expression, if needed.
                 if ( !ExpressionEmissive )
-                    ExpressionEmissive = NewObject< UMaterialExpressionTextureSampleParameter2D >(
-                        Material, UMaterialExpressionTextureSampleParameter2D::StaticClass(), NAME_None, ObjectFlag );
+                    ExpressionEmissive = ConstructObject< UMaterialExpressionTextureSampleParameter2D >(
+						UMaterialExpressionTextureSampleParameter2D::StaticClass(), Material, NAME_None, ObjectFlag);
 
                 // Record generating parameter.
                 ExpressionEmissive->Desc = GeneratingParameterName;
@@ -2062,9 +2095,11 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentEmissive(
                 ExpressionEmissive->Texture = TextureEmissive;
                 ExpressionEmissive->SamplerType = SAMPLERTYPE_LinearGrayscale;
 
+#if WITH_EDITORONLY_DATA
                 // Offset node placement.
                 ExpressionEmissive->MaterialExpressionEditorX = FHoudiniEngineMaterialUtils::MaterialExpressionNodeX;
                 ExpressionEmissive->MaterialExpressionEditorY = MaterialNodeY;
+#endif
                 MaterialNodeY += FHoudiniEngineMaterialUtils::MaterialExpressionNodeStepY;
 
                 // Assign expression to material.
@@ -2117,8 +2152,8 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentEmissive(
                     Material->EmissiveColor.Expression = nullptr;
                 }
 
-                ExpressionEmissiveColor = NewObject< UMaterialExpressionConstant4Vector >(
-                    Material, UMaterialExpressionConstant4Vector::StaticClass(), NAME_None, ObjectFlag );
+                ExpressionEmissiveColor = ConstructObject< UMaterialExpressionConstant4Vector >(
+                    UMaterialExpressionConstant4Vector::StaticClass(), Material, NAME_None, ObjectFlag );
             }
 
             // Record generating parameter.
@@ -2128,9 +2163,11 @@ FHoudiniEngineMaterialUtils::CreateMaterialComponentEmissive(
 
             ExpressionEmissiveColor->Constant = Color;
 
+#if WITH_EDITORONLY_DATA
             // Offset node placement.
             ExpressionEmissiveColor->MaterialExpressionEditorX = FHoudiniEngineMaterialUtils::MaterialExpressionNodeX;
             ExpressionEmissiveColor->MaterialExpressionEditorY = MaterialNodeY;
+#endif
             MaterialNodeY += FHoudiniEngineMaterialUtils::MaterialExpressionNodeStepY;
 
             // Assign expression to material.
@@ -2159,8 +2196,8 @@ FHoudiniEngineMaterialUtils::CreateUnrealTexture(
     else
     {
         // Create new texture object.
-        Texture = NewObject< UTexture2D >(
-            Package, UTexture2D::StaticClass(), *TextureName,
+        Texture = ConstructObject< UTexture2D >(
+            UTexture2D::StaticClass(), Package, *TextureName,
             RF_Transactional );
 
         // Assign texture group.
@@ -2176,6 +2213,8 @@ FHoudiniEngineMaterialUtils::CreateUnrealTexture(
         Package, Texture, HAPI_UNREAL_PACKAGE_META_GENERATED_TEXTURE_TYPE, *TextureType );
     FHoudiniEngineBakeUtils::AddHoudiniMetaInformationToPackage(
         Package, Texture, HAPI_UNREAL_PACKAGE_META_NODE_PATH, *NodePath );
+
+#if WITH_EDITORONLY_DATA
 
     // Initialize texture source.
     Texture->Source.Init( ImageInfo.xRes, ImageInfo.yRes, 1, 1, TSF_BGRA8 );
@@ -2231,6 +2270,13 @@ FHoudiniEngineMaterialUtils::CreateUnrealTexture(
 
     // Unlock the texture.
     Texture->Source.UnlockMip( 0 );
+
+#else
+
+	//JC
+	check(false && "Failed to set up texture correctly");
+
+#endif
 
     // Texture creation parameters.
     Texture->SRGB = TextureParameters.bSRGB;
@@ -2644,8 +2690,8 @@ FHoudiniEngineMaterialUtils::UpdateMaterialInstanceParameter( UGenericAttribute 
                 EnumValue = EBlendMode::BLEND_Additive;
             else if ( StringValue.Compare( "Modulate", ESearchCase::IgnoreCase ) == 0 )
                 EnumValue = EBlendMode::BLEND_Modulate;
-            else if ( StringValue.StartsWith( "Alpha", ESearchCase::IgnoreCase ) )
-                EnumValue = EBlendMode::BLEND_AlphaComposite;
+            //else if ( StringValue.StartsWith( "Alpha", ESearchCase::IgnoreCase ) )
+            //    EnumValue = EBlendMode::BLEND_AlphaComposite;
         }
 
         // Update the parameter value only if necessary
@@ -2676,12 +2722,12 @@ FHoudiniEngineMaterialUtils::UpdateMaterialInstanceParameter( UGenericAttribute 
                 EnumValue = EMaterialShadingModel::MSM_SubsurfaceProfile;
             else if ( StringValue.Compare( "TwoSidedFoliage", ESearchCase::IgnoreCase ) == 0 )
                 EnumValue = EMaterialShadingModel::MSM_TwoSidedFoliage;
-            else if ( StringValue.Compare( "Hair", ESearchCase::IgnoreCase ) == 0 )
-                EnumValue = EMaterialShadingModel::MSM_Hair;
-            else if ( StringValue.Compare( "Cloth", ESearchCase::IgnoreCase ) == 0 )
-                EnumValue = EMaterialShadingModel::MSM_Cloth;
-            else if ( StringValue.Compare( "Eye", ESearchCase::IgnoreCase ) == 0 )
-                EnumValue = EMaterialShadingModel::MSM_Eye;
+            //else if ( StringValue.Compare( "Hair", ESearchCase::IgnoreCase ) == 0 )
+            //    EnumValue = EMaterialShadingModel::MSM_Hair;
+            //else if ( StringValue.Compare( "Cloth", ESearchCase::IgnoreCase ) == 0 )
+            //    EnumValue = EMaterialShadingModel::MSM_Cloth;
+            //else if ( StringValue.Compare( "Eye", ESearchCase::IgnoreCase ) == 0 )
+            //    EnumValue = EMaterialShadingModel::MSM_Eye;
         }
 
         // Update the parameter value only if necessary
@@ -2704,6 +2750,8 @@ FHoudiniEngineMaterialUtils::UpdateMaterialInstanceParameter( UGenericAttribute 
         MaterialInstance->BasePropertyOverrides.TwoSided = Value;
         return true;
     }
+	/*
+	//JC: this UE4 feature isn't in the ARK engine
     else if ( MaterialParameter.AttributeName.Compare( "DitheredLODTransition", ESearchCase::IgnoreCase ) == 0 )
     {
         bool Value = MaterialParameter.GetBoolValue();
@@ -2716,6 +2764,7 @@ FHoudiniEngineMaterialUtils::UpdateMaterialInstanceParameter( UGenericAttribute 
         MaterialInstance->BasePropertyOverrides.DitheredLODTransition = Value;
         return true;
     }
+	*/
     else if ( MaterialParameter.AttributeName.Compare( "PhysMaterial", ESearchCase::IgnoreCase ) == 0 )
     {
         // Try to load a Material corresponding to the parameter value

@@ -27,7 +27,9 @@
 #include "HoudiniShelfEdMode.h"
 #include "HoudiniAttributeDataComponent.h"
 #include "Engine/Selection.h"
-#include "EditorModeManager.h"
+#include "Editor/UnrealEd/Public/EditorModes.h"
+#include "Editor/UnrealEd/Public/EditorModeRegistry.h"
+//#include "EditorModeManager.h"
 #include "Widgets/Input/SButton.h"
 
 #include "Internationalization.h"

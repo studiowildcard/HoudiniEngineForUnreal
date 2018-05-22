@@ -32,8 +32,8 @@
 #include "Internationalization.h"
 #define LOCTEXT_NAMESPACE HOUDINI_LOCTEXT_NAMESPACE 
 
-UHoudiniAssetParameterString::UHoudiniAssetParameterString( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetParameterString::UHoudiniAssetParameterString( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
 {
     Values.Add( TEXT( "" ) );
 }
@@ -55,8 +55,8 @@ UHoudiniAssetParameterString::Create(
         }
     }
 
-    UHoudiniAssetParameterString * HoudiniAssetParameterString = NewObject< UHoudiniAssetParameterString >(
-        Outer, UHoudiniAssetParameterString::StaticClass(), NAME_None, RF_Public | RF_Transactional );
+    UHoudiniAssetParameterString * HoudiniAssetParameterString = ConstructObject< UHoudiniAssetParameterString >(
+		UHoudiniAssetParameterString::StaticClass(), Outer, NAME_None, RF_Public | RF_Transactional);
 
     HoudiniAssetParameterString->CreateParameter( InPrimaryObject, InParentParameter, InNodeId, ParmInfo );
     return HoudiniAssetParameterString;

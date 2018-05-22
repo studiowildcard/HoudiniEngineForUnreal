@@ -37,7 +37,7 @@ class HOUDINIENGINERUNTIME_API UHoudiniMeshSplitInstancerComponent : public USce
    GENERATED_UCLASS_BODY()
 
 public:
-    virtual void OnComponentDestroyed( bool bDestroyingHierarchy ) override;
+    virtual void OnComponentDestroyed() override;
     virtual void Serialize( FArchive & Ar ) override;
 
     static void AddReferencedObjects( UObject * InThis, FReferenceCollector & Collector );
@@ -56,12 +56,12 @@ public:
     const TArray< class UStaticMeshComponent* >& GetInstances() const { return Instances; }
 
 private:
-    UPROPERTY( SkipSerialization, VisibleInstanceOnly, Category = Instances )
+    UPROPERTY( Transient, VisibleInstanceOnly, Category = Instances )
     TArray< class UStaticMeshComponent* > Instances;
 
-    UPROPERTY( SkipSerialization, VisibleInstanceOnly, Category=Instances)
+	UPROPERTY(Transient, VisibleInstanceOnly, Category = Instances)
     class UMaterialInterface* OverrideMaterial;
 
-    UPROPERTY(SkipSerialization, VisibleAnywhere, Category = Instances )
+	UPROPERTY(Transient, VisibleAnywhere, Category = Instances)
     class UStaticMesh* InstancedMesh;
 };

@@ -26,9 +26,10 @@
 #include "HoudiniEngineEditorPrivatePCH.h"
 #include "HoudiniShelfEdModeToolkit.h"
 #include "Toolkits/ToolkitManager.h"
-#include "EdMode.h"
-#include "EditorModeTools.h"
-#include "EditorModeManager.h"
+#include "Editor/UnrealEd/Public/EditorModes.h"
+#include "Editor/UnrealEd/Public/EditorModeTools.h"
+#include "Editor/UnrealEd/Public/EditorModeRegistry.h"
+//#include "EditorModeManager.h"
 
 const FEditorModeID FHoudiniShelfEdMode::EM_HoudiniShelfEdModeId = TEXT( "EM_HoudiniShelfEdMode" );
 
@@ -42,11 +43,12 @@ FHoudiniShelfEdMode::Enter()
 {
     FEdMode::Enter();
 
-    if ( !Toolkit.IsValid() && UsesToolkits() )
-    {
-        Toolkit = MakeShareable( new FHoudiniShelfEdModeToolkit );
-        Toolkit->Init( Owner->GetToolkitHost() );
-    }
+	if (!Toolkit.IsValid() && UsesToolkits())
+	{
+		auto ToolkitHost = FModuleManager::LoadModuleChecked< FLevelEditorModule >("LevelEditor").GetFirstLevelEditor();
+		Toolkit = MakeShareable(new FHoudiniShelfEdModeToolkit);
+		Toolkit->Init(ToolkitHost);
+	}
 }
 
 void

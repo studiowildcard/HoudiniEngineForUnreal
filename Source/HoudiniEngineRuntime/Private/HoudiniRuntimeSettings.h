@@ -23,8 +23,8 @@
 
 #pragma once
 #include <string>
+#include "UObject/CoreNet.h"
 #include "Engine/EngineTypes.h"
-#include "UObject/SoftObjectPtr.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "HoudiniRuntimeSettings.generated.h"
 
@@ -78,7 +78,7 @@ enum EHoudiniRuntimeSettingsAxisImport
 };
 
 UENUM()
-enum class EHoudiniToolType : uint8
+enum EHoudiniToolType
 {
     // For tools that generates geometry, and do not need input
     HTOOLTYPE_GENERATOR UMETA( DisplayName = "Generator" ),
@@ -104,7 +104,7 @@ struct FHoudiniToolDescription
 
     /** Type of the tool */
     UPROPERTY(Category = Tool, EditAnywhere)
-    EHoudiniToolType Type;
+    TEnumAsByte< enum EHoudiniToolType > Type;
 
     /** Tooltip shown on mouse hover */
     UPROPERTY( Category = Tool, EditAnywhere )
@@ -116,7 +116,7 @@ struct FHoudiniToolDescription
 
     /** Houdini uasset */
     UPROPERTY( Category = Tool, EditAnywhere )
-    TSoftObjectPtr < class UHoudiniAsset > HoudiniAsset;
+    TAssetPtr < class UHoudiniAsset > HoudiniAsset;
 
     /** Clicking on help icon will bring up this URL */
     UPROPERTY( Category = Tool, EditAnywhere )
@@ -356,9 +356,9 @@ class HOUDINIENGINERUNTIME_API UHoudiniRuntimeSettings : public UObject
             Meta = ( DisplayName = "Simple Collision Physical Material" ) )
         UPhysicalMaterial * PhysMaterial;
 
-	//* Default properties of the body instance
-	UPROPERTY(EditAnywhere, Category = GeneratedStaticMeshSettings, meta = ( FullyExpand = "true" ))
-	struct FBodyInstance DefaultBodyInstance;
+		//* Default properties of the body instance
+		UPROPERTY(EditAnywhere, Category = GeneratedStaticMeshSettings, meta = ( FullyExpand = "true" ))
+		struct FBodyInstance DefaultBodyInstance;
 
         //* Collision Trace behavior - by default, it will keep simple(convex)/complex(per-poly) separate for new Houdini Assets.
         UPROPERTY(

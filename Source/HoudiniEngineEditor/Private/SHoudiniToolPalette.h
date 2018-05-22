@@ -23,18 +23,18 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
+#include "Core.h"
 #include "HoudiniEngineEditor.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
 #include "Input/Reply.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Misc/NotifyHook.h"
+#include "Widgets/Input/SCheckBox.h"
 
 class IDetailsView;
 class ITableRow;
 class STableViewBase;
 struct FSlateBrush;
-enum class ECheckBoxState : uint8;
 
 class SHoudiniToolPalette : public SCompoundWidget, public FNotifyHook
 {

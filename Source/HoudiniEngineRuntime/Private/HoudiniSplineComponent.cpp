@@ -38,8 +38,8 @@
 #include "HoudiniEngine.h"
 #include "HoudiniPluginSerializationVersion.h"
 
-UHoudiniSplineComponent::UHoudiniSplineComponent( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniSplineComponent::UHoudiniSplineComponent( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
     , HoudiniAssetInput( nullptr )
     , CurveType( EHoudiniSplineComponentType::Polygon )
     , CurveMethod( EHoudiniSplineComponentMethod::Breakpoints )

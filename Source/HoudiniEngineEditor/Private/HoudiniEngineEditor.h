@@ -41,7 +41,7 @@ struct FHoudiniToolDescription;
 
 struct FHoudiniTool
 {
-    FHoudiniTool(TSoftObjectPtr < class UHoudiniAsset > InHoudiniAsset, const FText& InName, const EHoudiniToolType& InType, const FText& InToolTipText, const FSlateBrush* InIcon, const FString& InHelpURL )
+    FHoudiniTool(TAssetPtr < class UHoudiniAsset > InHoudiniAsset, const FText& InName, const EHoudiniToolType& InType, const FText& InToolTipText, const FSlateBrush* InIcon, const FString& InHelpURL )
         : HoudiniAsset( InHoudiniAsset )
         , Name( InName )
         , ToolTipText( InToolTipText )
@@ -50,7 +50,7 @@ struct FHoudiniTool
         , Type( InType )
     {
     }
-    TSoftObjectPtr < class UHoudiniAsset > HoudiniAsset;
+    TAssetPtr < class UHoudiniAsset > HoudiniAsset;
 
     /** The name to be displayed */
     FText Name;
@@ -105,7 +105,10 @@ class FHoudiniEngineEditor : public IHoudiniEngineEditor, public FEditorUndoClie
         virtual void RegisterPlacementModeExtensions() override;
         virtual void UnregisterPlacementModeExtensions() override;
 
-        static const FName GetStyleSetName();
+		static const FName GetStyleSetName();
+	/** IProceduralMeshGeneratorModule methods. **/
+	public:
+		virtual void BakeToActors(UWorld* World, ULevel* Level) const override;
 
     /** FEditorUndoClient methods. **/
     public:
@@ -153,8 +156,9 @@ class FHoudiniEngineEditor : public IHoudiniEngineEditor, public FEditorUndoClie
         /** Helper delegate used to determine if Clean up temp can be executed. **/
         bool CanCleanUpTempFolder() const;
 
-        /** Menu action to bake/replace all current Houdini Assets with blueprints **/
-        void BakeAllAssets();
+        /** Menu action to bake/replace all current Houdini Assets with blueprints.
+			If bReplaceHoudiniActors is true, then the original Houdini actors will be removed as well. **/
+        void BakeAllAssets(bool bReplaceHoudiniActors);
 
         /** Helper function for baking/replacing the current select Houdini Assets with blueprints **/
         void BakeSelection();

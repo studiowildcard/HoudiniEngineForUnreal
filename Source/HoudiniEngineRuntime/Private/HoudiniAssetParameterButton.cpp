@@ -27,8 +27,8 @@
 #include "HoudiniAssetComponent.h"
 #include "HoudiniEngine.h"
 
-UHoudiniAssetParameterButton::UHoudiniAssetParameterButton( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetParameterButton::UHoudiniAssetParameterButton( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
 {}
 
 UHoudiniAssetParameterButton *
@@ -48,8 +48,8 @@ UHoudiniAssetParameterButton::Create(
         }
     }
 
-    UHoudiniAssetParameterButton * HoudiniAssetParameterButton = NewObject< UHoudiniAssetParameterButton >(
-        Outer, UHoudiniAssetParameterButton::StaticClass(), NAME_None, RF_Public | RF_Transactional );
+    UHoudiniAssetParameterButton * HoudiniAssetParameterButton = ConstructObject< UHoudiniAssetParameterButton >(
+		UHoudiniAssetParameterButton::StaticClass(), Outer, NAME_None, RF_Public | RF_Transactional);
 
     HoudiniAssetParameterButton->CreateParameter( InPrimaryObject, InParentParameter, InNodeId, ParmInfo );
     return HoudiniAssetParameterButton;

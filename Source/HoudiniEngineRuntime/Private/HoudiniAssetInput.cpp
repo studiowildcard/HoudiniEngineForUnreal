@@ -42,7 +42,6 @@
 #include "HoudiniEngineRuntimePrivatePCH.h"
 
 #if WITH_EDITOR
-    #include "UnrealEdGlobals.h"
     #include "Editor/UnrealEdEngine.h"
 #endif
 
@@ -98,16 +97,16 @@ FHoudiniAssetInputOutlinerMesh::RebuildSplineTransformsArrayIfNeeded()
         return;
 
     // If those are different, the input component has changed
-    if ( NumberOfSplineControlPoints != SplineComponent->GetNumberOfSplinePoints() )
+    if ( NumberOfSplineControlPoints != SplineComponent->GetNumSplinePoints() )
         return;
 
     // If those are equals, there's no need to rebuild the array
-    if ( SplineControlPointsTransform.Num() == SplineComponent->GetNumberOfSplinePoints() )
+	if (SplineControlPointsTransform.Num() == SplineComponent->GetNumSplinePoints())
         return;
 
-    SplineControlPointsTransform.SetNumUninitialized(SplineComponent->GetNumberOfSplinePoints());
+	SplineControlPointsTransform.SetNumUninitialized(SplineComponent->GetNumSplinePoints());
     for ( int32 n = 0; n < SplineControlPointsTransform.Num(); n++ )
-        SplineControlPointsTransform[n] = SplineComponent->GetTransformAtSplinePoint( n, ESplineCoordinateSpace::Local, true );
+		SplineControlPointsTransform[n] = FSplineUtils::GetLocalTransformAtSplinePoint(SplineComponent, n);
 }
 
 bool
@@ -121,10 +120,10 @@ FHoudiniAssetInputOutlinerMesh::HasSplineComponentChanged(float fCurrentSplineRe
         return true;
 
     // Number of CVs has changed ?
-    if ( NumberOfSplineControlPoints != SplineComponent->GetNumberOfSplinePoints() )
+	if (NumberOfSplineControlPoints != SplineComponent->GetNumSplinePoints())
         return true;
 
-    if ( SplineControlPointsTransform.Num() != SplineComponent->GetNumberOfSplinePoints() )
+	if (SplineControlPointsTransform.Num() != SplineComponent->GetNumSplinePoints())
         return true;
 
     // Current Spline resolution has changed?
@@ -143,13 +142,13 @@ FHoudiniAssetInputOutlinerMesh::HasSplineComponentChanged(float fCurrentSplineRe
     // Has any of the CV's transform been modified?
     for ( int32 n = 0; n < SplineControlPointsTransform.Num(); n++ )
     {
-        if ( !SplineControlPointsTransform[ n ].GetLocation().Equals( SplineComponent->GetLocationAtSplinePoint( n, ESplineCoordinateSpace::Local) ) )
+        if ( !SplineControlPointsTransform[ n ].GetLocation().Equals( FSplineUtils::GetLocalLocationAtSplinePoint(SplineComponent, n)  ) )
             return true;
 
-        if ( !SplineControlPointsTransform[ n ].GetRotation().Equals( SplineComponent->GetQuaternionAtSplinePoint( n, ESplineCoordinateSpace::World ) ) )
+        if ( !SplineControlPointsTransform[ n ].GetRotation().Equals( FSplineUtils::GetWorldRotationAtSplinePoint(SplineComponent, n ) ) )
             return true;
 
-        if ( !SplineControlPointsTransform[ n ].GetScale3D().Equals( SplineComponent->GetScaleAtSplinePoint( n ) ) )
+        if ( !SplineControlPointsTransform[ n ].GetScale3D().Equals( FSplineUtils::GetScaleAtSplinePoint(SplineComponent, n) ) )
             return true;
     }
 
@@ -207,8 +206,8 @@ FHoudiniAssetInputOutlinerMesh::NeedsComponentUpdate() const
     return false;
 }
 
-UHoudiniAssetInput::UHoudiniAssetInput( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetInput::UHoudiniAssetInput( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
     , InputCurve( nullptr )
     , InputAssetComponent( nullptr )
     , InputLandscapeProxy( nullptr )
@@ -253,9 +252,9 @@ UHoudiniAssetInput::Create( UObject * InPrimaryObject, int32 InInputIndex, HAPI_
         return HoudiniAssetInput;
     }
 
-    HoudiniAssetInput = NewObject< UHoudiniAssetInput >(
+    HoudiniAssetInput = ConstructObject< UHoudiniAssetInput >(
+		UHoudiniAssetInput::StaticClass(),
         InPrimaryObject,
-        UHoudiniAssetInput::StaticClass(),
         NAME_None, RF_Public | RF_Transactional );
 
     // Set component and other information.
@@ -293,8 +292,8 @@ UHoudiniAssetInput::Create(
         }
     }
 
-    UHoudiniAssetInput * HoudiniAssetInput = NewObject< UHoudiniAssetInput >(
-        Outer, UHoudiniAssetInput::StaticClass(), NAME_None, RF_Public | RF_Transactional);
+    UHoudiniAssetInput * HoudiniAssetInput = ConstructObject< UHoudiniAssetInput >(
+		UHoudiniAssetInput::StaticClass(), Outer, NAME_None, RF_Public | RF_Transactional);
 
     // This is being used as a parameter
     HoudiniAssetInput->bIsObjectPathParameter = true;
@@ -460,7 +459,7 @@ UHoudiniAssetInput::PostEditUndo()
             AActor* Owner = RootComp->GetOwner();
             Owner->AddOwnedComponent( InputCurve );
 
-            InputCurve->AttachToComponent( RootComp, FAttachmentTransformRules::KeepRelativeTransform );
+			InputCurve->AttachTo(RootComp);
             InputCurve->RegisterComponent();
             InputCurve->SetVisibility( true );
         }
@@ -479,7 +478,7 @@ UHoudiniAssetInput::ForceSetInputObject(UObject * InObject, int32 AtIndex, bool 
             if ( !StaticMeshComponent )
                 continue;
 
-            UStaticMesh * StaticMesh = StaticMeshComponent->GetStaticMesh();
+            UStaticMesh * StaticMesh = StaticMeshComponent->StaticMesh;
             if ( !StaticMesh )
                 continue;
 
@@ -1085,13 +1084,13 @@ UHoudiniAssetInput::PostLoad()
             InputCurve->SetHoudiniAssetInput(this);
             if( USceneComponent* RootComp = GetHoudiniAssetComponent() )
             {
-                InputCurve->AttachToComponent( RootComp, FAttachmentTransformRules::KeepRelativeTransform );
+				InputCurve->AttachTo(RootComp);
             }
         }
         else
         {
             // Manually destroying the "ghost" curve
-            InputCurve->DetachFromComponent( FDetachmentTransformRules::KeepRelativeTransform );
+			InputCurve->DetachFromParent();
             InputCurve->UnregisterComponent();
             InputCurve->DestroyComponent();
             InputCurve = nullptr;
@@ -1271,7 +1270,7 @@ UHoudiniAssetInput::DisconnectInputCurve()
     // If we have spline, delete it.
     if ( InputCurve )
     {
-        InputCurve->DetachFromComponent( FDetachmentTransformRules::KeepRelativeTransform );
+		InputCurve->DetachFromParent();
         InputCurve->UnregisterComponent();
     }
 }
@@ -1282,7 +1281,7 @@ UHoudiniAssetInput::DestroyInputCurve()
     // If we have spline, delete it.
     if ( InputCurve )
     {
-        InputCurve->DetachFromComponent( FDetachmentTransformRules::KeepRelativeTransform );
+		InputCurve->DetachFromParent();
         InputCurve->UnregisterComponent();
         InputCurve->DestroyComponent();
 
@@ -1481,12 +1480,12 @@ UHoudiniAssetInput::ChangeInputType(const EHoudiniAssetInputType::Enum& newType)
             {
                 if( !InputCurve )
                 {
-                    InputCurve = NewObject< UHoudiniSplineComponent >(
-                        RootComp->GetOwner(), UHoudiniSplineComponent::StaticClass(),
+                    InputCurve = ConstructObject< UHoudiniSplineComponent >(
+						UHoudiniSplineComponent::StaticClass(), RootComp->GetOwner(),
                         NAME_None, RF_Public | RF_Transactional );
                 }
                 // Attach or re-attach curve component to asset.
-                InputCurve->AttachToComponent( RootComp, FAttachmentTransformRules::KeepRelativeTransform );
+				InputCurve->AttachTo(RootComp);
                 InputCurve->RegisterComponent();
                 InputCurve->SetVisibility( true );
                 InputCurve->SetHoudiniAssetInput( this );
@@ -2164,9 +2163,9 @@ UHoudiniAssetInput::HandleChoiceContentText() const
 #if WITH_EDITOR
 
 void
-UHoudiniAssetInput::CheckStateChangedExportOnlySelected( ECheckBoxState NewState )
+UHoudiniAssetInput::CheckStateChangedExportOnlySelected( ESlateCheckBoxState::Type NewState )
 {
-    int32 bState = ( NewState == ECheckBoxState::Checked );
+    int32 bState = ( NewState == ESlateCheckBoxState::Type::Checked );
 
     if ( bLandscapeExportSelectionOnly != bState )
     {
@@ -2186,19 +2185,19 @@ UHoudiniAssetInput::CheckStateChangedExportOnlySelected( ECheckBoxState NewState
     }
 }
 
-ECheckBoxState
+ESlateCheckBoxState::Type
 UHoudiniAssetInput::IsCheckedExportOnlySelected() const
 {
     if ( bLandscapeExportSelectionOnly )
-        return ECheckBoxState::Checked;
+        return ESlateCheckBoxState::Type::Checked;
 
-    return ECheckBoxState::Unchecked;
+    return ESlateCheckBoxState::Type::Unchecked;
 }
 
 void
-UHoudiniAssetInput::CheckStateChangedAutoSelectLandscape( ECheckBoxState NewState )
+UHoudiniAssetInput::CheckStateChangedAutoSelectLandscape( ESlateCheckBoxState::Type NewState )
 {
-    int32 bState = (NewState == ECheckBoxState::Checked);
+    int32 bState = (NewState == ESlateCheckBoxState::Type::Checked);
 
     if (bLandscapeAutoSelectComponent != bState)
     {
@@ -2218,19 +2217,19 @@ UHoudiniAssetInput::CheckStateChangedAutoSelectLandscape( ECheckBoxState NewStat
     }
 }
 
-ECheckBoxState
+ESlateCheckBoxState::Type
 UHoudiniAssetInput::IsCheckedAutoSelectLandscape() const
 {
     if ( bLandscapeAutoSelectComponent )
-        return ECheckBoxState::Checked;
+        return ESlateCheckBoxState::Type::Checked;
 
-    return ECheckBoxState::Unchecked;
+    return ESlateCheckBoxState::Type::Unchecked;
 }
 
 void
-UHoudiniAssetInput::CheckStateChangedExportCurves( ECheckBoxState NewState )
+UHoudiniAssetInput::CheckStateChangedExportCurves( ESlateCheckBoxState::Type NewState )
 {
-    int32 bState = ( NewState == ECheckBoxState::Checked );
+    int32 bState = ( NewState == ESlateCheckBoxState::Type::Checked );
 
     if ( bLandscapeExportCurves != bState )
     {
@@ -2250,19 +2249,19 @@ UHoudiniAssetInput::CheckStateChangedExportCurves( ECheckBoxState NewState )
     }
 }
 
-ECheckBoxState
+ESlateCheckBoxState::Type
 UHoudiniAssetInput::IsCheckedExportCurves() const
 {
     if ( bLandscapeExportCurves )
-        return ECheckBoxState::Checked;
+        return ESlateCheckBoxState::Type::Checked;
 
-    return ECheckBoxState::Unchecked;
+    return ESlateCheckBoxState::Type::Unchecked;
 }
 
 void
-UHoudiniAssetInput::CheckStateChangedExportAsMesh( ECheckBoxState NewState )
+UHoudiniAssetInput::CheckStateChangedExportAsMesh( ESlateCheckBoxState::Type NewState )
 {
-    int32 bState = ( NewState == ECheckBoxState::Checked );
+    int32 bState = ( NewState == ESlateCheckBoxState::Type::Checked );
 
     if ( bLandscapeExportAsMesh != bState )
     {
@@ -2285,19 +2284,19 @@ UHoudiniAssetInput::CheckStateChangedExportAsMesh( ECheckBoxState NewState )
     }
 }
 
-ECheckBoxState
+ESlateCheckBoxState::Type
 UHoudiniAssetInput::IsCheckedExportAsMesh() const
 {
     if ( bLandscapeExportAsMesh )
-        return ECheckBoxState::Checked;
+        return ESlateCheckBoxState::Type::Checked;
 
-    return ECheckBoxState::Unchecked;
+    return ESlateCheckBoxState::Type::Unchecked;
 }
 
 void
-UHoudiniAssetInput::CheckStateChangedExportAsHeightfield( ECheckBoxState NewState ) 
+UHoudiniAssetInput::CheckStateChangedExportAsHeightfield( ESlateCheckBoxState::Type NewState ) 
 {
-    int32 bState = ( NewState == ECheckBoxState::Checked );
+    int32 bState = ( NewState == ESlateCheckBoxState::Type::Checked );
 
     if ( bLandscapeExportAsHeightfield != bState )
     {
@@ -2321,19 +2320,19 @@ UHoudiniAssetInput::CheckStateChangedExportAsHeightfield( ECheckBoxState NewStat
     }
 }
 
-ECheckBoxState
+ESlateCheckBoxState::Type
 UHoudiniAssetInput::IsCheckedExportAsHeightfield() const
 {
     if ( bLandscapeExportAsHeightfield )
-        return ECheckBoxState::Checked;
+        return ESlateCheckBoxState::Type::Checked;
 
-    return ECheckBoxState::Unchecked;
+    return ESlateCheckBoxState::Type::Unchecked;
 }
 
 void
-UHoudiniAssetInput::CheckStateChangedExportAsPoints( ECheckBoxState NewState )
+UHoudiniAssetInput::CheckStateChangedExportAsPoints( ESlateCheckBoxState::Type NewState )
 {
-    int32 bState = (NewState == ECheckBoxState::Checked);
+    int32 bState = (NewState == ESlateCheckBoxState::Type::Checked);
 
     uint32 bExportAsPoints = !bLandscapeExportAsHeightfield && !bLandscapeExportAsMesh;
     if (bExportAsPoints != bState)
@@ -2363,19 +2362,19 @@ UHoudiniAssetInput::CheckStateChangedExportAsPoints( ECheckBoxState NewState )
     }
 }
 
-ECheckBoxState
+ESlateCheckBoxState::Type
 UHoudiniAssetInput::IsCheckedExportAsPoints() const
 {
     if ( !bLandscapeExportAsHeightfield && !bLandscapeExportAsMesh )
-        return ECheckBoxState::Checked;
+        return ESlateCheckBoxState::Type::Checked;
 
-    return ECheckBoxState::Unchecked;
+    return ESlateCheckBoxState::Type::Unchecked;
 }
 
 void
-UHoudiniAssetInput::CheckStateChangedExportMaterials( ECheckBoxState NewState )
+UHoudiniAssetInput::CheckStateChangedExportMaterials( ESlateCheckBoxState::Type NewState )
 {
-    int32 bState = ( NewState == ECheckBoxState::Checked );
+    int32 bState = ( NewState == ESlateCheckBoxState::Type::Checked );
 
     if ( bLandscapeExportMaterials != bState )
     {
@@ -2395,19 +2394,19 @@ UHoudiniAssetInput::CheckStateChangedExportMaterials( ECheckBoxState NewState )
     }
 }
 
-ECheckBoxState
+ESlateCheckBoxState::Type
 UHoudiniAssetInput::IsCheckedExportMaterials() const
 {
     if ( bLandscapeExportMaterials )
-        return ECheckBoxState::Checked;
+        return ESlateCheckBoxState::Type::Checked;
 
-    return ECheckBoxState::Unchecked;
+    return ESlateCheckBoxState::Type::Unchecked;
 }
 
 void
-UHoudiniAssetInput::CheckStateChangedExportLighting( ECheckBoxState NewState )
+UHoudiniAssetInput::CheckStateChangedExportLighting( ESlateCheckBoxState::Type NewState )
 {
-    int32 bState = ( NewState == ECheckBoxState::Checked );
+    int32 bState = ( NewState == ESlateCheckBoxState::Type::Checked );
 
     if ( bLandscapeExportLighting != bState )
     {
@@ -2427,19 +2426,19 @@ UHoudiniAssetInput::CheckStateChangedExportLighting( ECheckBoxState NewState )
     }
 }
 
-ECheckBoxState
+ESlateCheckBoxState::Type
 UHoudiniAssetInput::IsCheckedExportLighting() const
 {
     if ( bLandscapeExportLighting )
-        return ECheckBoxState::Checked;
+        return ESlateCheckBoxState::Type::Checked;
 
-    return ECheckBoxState::Unchecked;
+    return ESlateCheckBoxState::Type::Unchecked;
 }
 
 void
-UHoudiniAssetInput::CheckStateChangedExportNormalizedUVs( ECheckBoxState NewState )
+UHoudiniAssetInput::CheckStateChangedExportNormalizedUVs( ESlateCheckBoxState::Type NewState )
 {
-    int32 bState = ( NewState == ECheckBoxState::Checked );
+    int32 bState = ( NewState == ESlateCheckBoxState::Type::Checked );
 
     if ( bLandscapeExportNormalizedUVs != bState )
     {
@@ -2459,19 +2458,19 @@ UHoudiniAssetInput::CheckStateChangedExportNormalizedUVs( ECheckBoxState NewStat
     }
 }
 
-ECheckBoxState
+ESlateCheckBoxState::Type
 UHoudiniAssetInput::IsCheckedExportNormalizedUVs() const
 {
     if ( bLandscapeExportNormalizedUVs )
-        return ECheckBoxState::Checked;
+        return ESlateCheckBoxState::Type::Checked;
 
-    return ECheckBoxState::Unchecked;
+    return ESlateCheckBoxState::Type::Unchecked;
 }
 
 void
-UHoudiniAssetInput::CheckStateChangedExportTileUVs( ECheckBoxState NewState )
+UHoudiniAssetInput::CheckStateChangedExportTileUVs( ESlateCheckBoxState::Type NewState )
 {
-    int32 bState = ( NewState == ECheckBoxState::Checked );
+    int32 bState = ( NewState == ESlateCheckBoxState::Type::Checked );
 
     if ( bLandscapeExportTileUVs != bState )
     {
@@ -2492,19 +2491,19 @@ UHoudiniAssetInput::CheckStateChangedExportTileUVs( ECheckBoxState NewState )
 }
 
 
-ECheckBoxState
+ESlateCheckBoxState::Type
 UHoudiniAssetInput::IsCheckedExportTileUVs() const
 {
     if ( bLandscapeExportTileUVs )
-        return ECheckBoxState::Checked;
+        return ESlateCheckBoxState::Type::Checked;
 
-    return ECheckBoxState::Unchecked;
+    return ESlateCheckBoxState::Type::Unchecked;
 }
 
 void
-UHoudiniAssetInput::CheckStateChangedKeepWorldTransform(ECheckBoxState NewState)
+UHoudiniAssetInput::CheckStateChangedKeepWorldTransform(ESlateCheckBoxState::Type NewState)
 { 
-    int32 bState = ( NewState == ECheckBoxState::Checked );
+    int32 bState = ( NewState == ESlateCheckBoxState::Type::Checked );
 
     if ( bKeepWorldTransform == bState )
         return;
@@ -2524,26 +2523,26 @@ UHoudiniAssetInput::CheckStateChangedKeepWorldTransform(ECheckBoxState NewState)
     MarkChanged();
 }
 
-ECheckBoxState
+ESlateCheckBoxState::Type
 UHoudiniAssetInput::IsCheckedKeepWorldTransform() const
 {
     if ( bKeepWorldTransform == 2 )
     {
         if (GetDefaultTranformTypeValue())
-            return ECheckBoxState::Checked;
+            return ESlateCheckBoxState::Type::Checked;
         else
-            return ECheckBoxState::Unchecked;
+            return ESlateCheckBoxState::Type::Unchecked;
     }
     else if ( bKeepWorldTransform )
-        return ECheckBoxState::Checked;
+        return ESlateCheckBoxState::Type::Checked;
     
-    return ECheckBoxState::Unchecked;
+    return ESlateCheckBoxState::Type::Unchecked;
 }
 
 void
-UHoudiniAssetInput::CheckStateChangedExportAllLODs( ECheckBoxState NewState )
+UHoudiniAssetInput::CheckStateChangedExportAllLODs( ESlateCheckBoxState::Type NewState )
 {
-    int32 bState = ( NewState == ECheckBoxState::Checked );
+    int32 bState = ( NewState == ESlateCheckBoxState::Type::Checked );
 
     if ( bExportAllLODs == bState )
         return;
@@ -2567,19 +2566,19 @@ UHoudiniAssetInput::CheckStateChangedExportAllLODs( ECheckBoxState NewState )
     MarkChanged();
 }
 
-ECheckBoxState
+ESlateCheckBoxState::Type
 UHoudiniAssetInput::IsCheckedExportAllLODs() const
 {
     if ( bExportAllLODs )
-        return ECheckBoxState::Checked;
+		return ESlateCheckBoxState::Type::Checked;
 
-    return ECheckBoxState::Unchecked;
+	return ESlateCheckBoxState::Type::Unchecked;
 }
 
 void
-UHoudiniAssetInput::CheckStateChangedPackBeforeMerge( ECheckBoxState NewState )
+UHoudiniAssetInput::CheckStateChangedPackBeforeMerge( ESlateCheckBoxState::Type NewState )
 {
-    int32 bState = ( NewState == ECheckBoxState::Checked );
+    int32 bState = ( NewState == ESlateCheckBoxState::Type::Checked );
 
     if ( bPackBeforeMerge == bState )
         return;
@@ -2600,13 +2599,13 @@ UHoudiniAssetInput::CheckStateChangedPackBeforeMerge( ECheckBoxState NewState )
 }
 
 
-ECheckBoxState
+ESlateCheckBoxState::Type
 UHoudiniAssetInput::IsCheckedPackBeforeMerge() const
 {
     if ( bPackBeforeMerge )
-        return ECheckBoxState::Checked;
+        return ESlateCheckBoxState::Type::Checked;
     else
-        return ECheckBoxState::Unchecked;
+        return ESlateCheckBoxState::Type::Unchecked;
 }
 
 void 
@@ -2728,12 +2727,12 @@ void UHoudiniAssetInput::DuplicateCurves(UHoudiniAssetInput * OriginalInput)
     UHoudiniSplineComponent* pOriginalCurve = InputCurve;
 
     // Creates a new Curve
-    InputCurve = NewObject< UHoudiniSplineComponent >(
-        RootComp->GetOwner(), UHoudiniSplineComponent::StaticClass(),
+    InputCurve = ConstructObject< UHoudiniSplineComponent >(
+		UHoudiniSplineComponent::StaticClass(), RootComp->GetOwner(),
         NAME_None, RF_Public | RF_Transactional);
 
     // Attach curve component to asset.
-    InputCurve->AttachToComponent( RootComp, FAttachmentTransformRules::KeepRelativeTransform);
+	InputCurve->AttachTo(RootComp);
     InputCurve->RegisterComponent();
     InputCurve->SetVisibility(true);
 
@@ -3087,7 +3086,7 @@ UHoudiniAssetInput::UpdateInputOulinerArrayFromActor( AActor * Actor, const bool
         if ( !StaticMeshComponent || StaticMeshComponent->ComponentHasTag( NAME_HoudiniNoUpload ) )
             continue;
 
-        UStaticMesh * StaticMesh = StaticMeshComponent->GetStaticMesh();
+        UStaticMesh * StaticMesh = StaticMeshComponent->StaticMesh;
         if ( !StaticMesh )
             continue;
 
@@ -3125,7 +3124,7 @@ UHoudiniAssetInput::UpdateInputOulinerArrayFromActor( AActor * Actor, const bool
         // Updating the OutlinerMesh's struct infos
         OutlinerMesh.SplineResolution = UnrealSplineResolution;
         OutlinerMesh.SplineLength = SplineComponent->GetSplineLength();
-        OutlinerMesh.NumberOfSplineControlPoints = SplineComponent->GetNumberOfSplinePoints();
+        OutlinerMesh.NumberOfSplineControlPoints = SplineComponent->GetNumSplinePoints();
 
         InputOutlinerMeshArray.Add( OutlinerMesh );
     }

@@ -214,7 +214,7 @@ FHoudiniSplineComponentVisualizer::DrawVisualization(
 
 bool
 FHoudiniSplineComponentVisualizer::VisProxyHandleClick(
-    FEditorViewportClient* InViewportClient, HComponentVisProxy* VisProxy, const FViewportClick& Click )
+	FLevelEditorViewportClient* InViewportClient, HComponentVisProxy* VisProxy, const FViewportClick& Click)
 {
     bCurveEditing = false;
     if ( !VisProxy || !VisProxy->Component.IsValid() )

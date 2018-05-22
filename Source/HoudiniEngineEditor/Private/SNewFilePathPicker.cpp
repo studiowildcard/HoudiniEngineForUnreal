@@ -92,8 +92,8 @@ void SNewFilePathPicker::Construct( const FArguments& InArgs )
  *****************************************************************************/
 #if PLATFORM_WINDOWS
 
-#include "WindowsHWrapper.h"
-#include "COMPointer.h"
+//#include "COMPointer.h"
+#include "WindowsHWrapper_Houdini.h"
 //#include "Misc/Paths.h"
 //#include "Misc/Guid.h"
 #include "HAL/FileManager.h"
@@ -124,7 +124,7 @@ bool FileDialogShared( bool bSave, const void* ParentWindowHandle, const FString
             {
                 FileDialog->SetFileName( *FPaths::GetCleanFilename( DefaultFile ) );
             }
-            DWORD dwFlags = 0;
+            ::DWORD dwFlags = 0;
             FileDialog->GetOptions( &dwFlags );
             FileDialog->SetOptions( dwFlags & ~FOS_OVERWRITEPROMPT );
         }
@@ -133,7 +133,7 @@ bool FileDialogShared( bool bSave, const void* ParentWindowHandle, const FString
             // Set this up as a multi-select picker
             if ( Flags & EFileDialogFlags::Multiple )
             {
-                DWORD dwFlags = 0;
+                ::DWORD dwFlags = 0;
                 FileDialog->GetOptions( &dwFlags );
                 FileDialog->SetOptions( dwFlags | FOS_ALLOWMULTISELECT );
             }
@@ -159,7 +159,7 @@ bool FileDialogShared( bool bSave, const void* ParentWindowHandle, const FString
         TArray<COMDLG_FILTERSPEC> FileDialogFilters;
         {
             // Split the given filter string (formatted as "Pair1String1|Pair1String2|Pair2String1|Pair2String2") into the Windows specific filter struct
-            FileTypes.ParseIntoArray( UnformattedExtensions, TEXT( "|" ), true );
+            FileTypes.ParseIntoArray( &UnformattedExtensions, TEXT( "|" ), true );
 
             if ( UnformattedExtensions.Num() % 2 == 0 )
             {
@@ -178,7 +178,7 @@ bool FileDialogShared( bool bSave, const void* ParentWindowHandle, const FString
         if ( SUCCEEDED( FileDialog->Show( (HWND)ParentWindowHandle ) ) )
         {
             OutFilterIndex = 0;
-            if ( SUCCEEDED( FileDialog->GetFileTypeIndex( (UINT*)&OutFilterIndex ) ) )
+            if ( SUCCEEDED( FileDialog->GetFileTypeIndex( (::UINT*)&OutFilterIndex ) ) )
             {
                 OutFilterIndex -= 1; // GetFileTypeIndex returns a 1-based index
             }
@@ -208,7 +208,7 @@ bool FileDialogShared( bool bSave, const void* ParentWindowHandle, const FString
                             FString CleanExtension = FileDialogFilters[OutFilterIndex].pszSpec;
                             if ( CleanExtension == TEXT( "*.*" ) )
                             {
-                                CleanExtension.Reset();
+								CleanExtension = TEXT("");
                             }
                             else
                             {
@@ -238,29 +238,29 @@ bool FileDialogShared( bool bSave, const void* ParentWindowHandle, const FString
                 }
             }
             else
-            {
-                IFileOpenDialog* FileOpenDialog = static_cast<IFileOpenDialog*>( FileDialog.Get() );
+			{
+				IFileOpenDialog* FileOpenDialog = static_cast<IFileOpenDialog*>(FileDialog.operator IFileDialog *());
 
-                TComPtr<IShellItemArray> Results;
-                if ( SUCCEEDED( FileOpenDialog->GetResults( &Results ) ) )
-                {
-                    DWORD NumResults = 0;
-                    Results->GetCount( &NumResults );
-                    for ( DWORD ResultIndex = 0; ResultIndex < NumResults; ++ResultIndex )
-                    {
-                        TComPtr<IShellItem> Result;
-                        if ( SUCCEEDED( Results->GetItemAt( ResultIndex, &Result ) ) )
-                        {
-                            PWSTR pFilePath = nullptr;
-                            if ( SUCCEEDED( Result->GetDisplayName( SIGDN_FILESYSPATH, &pFilePath ) ) )
-                            {
-                                bSuccess = true;
-                                AddOutFilename( pFilePath );
-                                ::CoTaskMemFree( pFilePath );
-                            }
-                        }
-                    }
-                }
+				TComPtr<IShellItemArray> Results;
+				if (SUCCEEDED(FileOpenDialog->GetResults(&Results)))
+				{
+					::DWORD NumResults = 0;
+					Results->GetCount(&NumResults);
+					for (::DWORD ResultIndex = 0; ResultIndex < NumResults; ++ResultIndex)
+					{
+						TComPtr<IShellItem> Result;
+						if (SUCCEEDED(Results->GetItemAt(ResultIndex, &Result)))
+						{
+							PWSTR pFilePath = nullptr;
+							if (SUCCEEDED(Result->GetDisplayName(SIGDN_FILESYSPATH, &pFilePath)))
+							{
+								bSuccess = true;
+								AddOutFilename(pFilePath);
+								::CoTaskMemFree(pFilePath);
+							}
+						}
+					}
+				}
             }
         }
     }

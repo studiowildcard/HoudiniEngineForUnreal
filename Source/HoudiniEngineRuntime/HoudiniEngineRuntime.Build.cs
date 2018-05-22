@@ -25,16 +25,13 @@
  *      Toronto, Ontario
  *      Canada   M5J 2M2
  *      416-504-9876
- *
- * COMMENTS:
- *      This file is generated. Do not modify directly.
  */
 
 /*
 
-    Houdini Version: 16.5.394
-    Houdini Engine Version: 3.1.13
-    Unreal Version: 4.18.0
+    Houdini Version: 16.5.405
+    Houdini Engine Version: 3.1.11
+    Unreal Version: 4.5.0 (ARK)
 
 */
 
@@ -44,76 +41,19 @@ using System.IO;
 
 public class HoudiniEngineRuntime : ModuleRules
 {
-    public HoudiniEngineRuntime( ReadOnlyTargetRules Target ) : base( Target )
+    public HoudiniEngineRuntime( TargetInfo Target )
     {
         PCHUsage = PCHUsageMode.UseSharedPCHs;
-        bool bIsRelease = true;
-        string HFSPath = "";
-        string HoudiniVersion = "16.5.394";
+        string HFSPath = "Houdini";
+        string HoudiniVersion = "16.5.405";
         PlatformID platformId = Environment.OSVersion.Platform;
 
         // Check if we are compiling on unsupported platforms.
         if( Target.Platform != UnrealTargetPlatform.Win64 &&
             Target.Platform != UnrealTargetPlatform.Mac &&
-            Target.Platform != UnrealTargetPlatform.Linux &&
-            Target.Platform != UnrealTargetPlatform.Switch )
+            Target.Platform != UnrealTargetPlatform.Linux)
         {
             System.Console.WriteLine( string.Format( "Houdini Engine : Compiling on untested platform.  Please let us know how it goes!" ) );
-        }
-
-        if( bIsRelease )
-        {
-            if( platformId == PlatformID.Win32NT )
-            {
-                // We first check if Houdini Engine is installed.
-                string HPath = "C:/Program Files/Side Effects Software/Houdini Engine " + HoudiniVersion;
-                if( !Directory.Exists( HPath ) )
-                {
-                    // If Houdini Engine is not installed, we check for Houdini installation.
-                    HPath = "C:/Program Files/Side Effects Software/Houdini " + HoudiniVersion;
-                    if( !Directory.Exists( HPath ) )
-                    {
-                        if ( !Directory.Exists( HFSPath ) )
-                        {
-                            string Err = string.Format( "Houdini Engine : Please install Houdini or Houdini Engine {0}", HoudiniVersion );
-                            System.Console.WriteLine( Err );
-                        }
-                    }
-                    else
-                    {
-                        HFSPath = HPath;
-                    }
-                }
-                else
-                {
-                    HFSPath = HPath;
-                }
-            }
-            else if( platformId == PlatformID.MacOSX )
-            {
-                string HPath = "/Applications/Houdini/Houdini" + HoudiniVersion + "/Frameworks/Houdini.framework/Versions/Current/Resources";
-                if( !Directory.Exists( HPath ) )
-                {
-                    if ( !Directory.Exists( HFSPath ) )
-                    {
-                        string Err = string.Format( "Houdini Engine : Please install Houdini {0}", HoudiniVersion );
-                        System.Console.WriteLine( Err );
-                    }
-                }
-                else
-                {
-                    HFSPath = HPath;
-                }
-            }
-            else if( platformId == PlatformID.Unix )
-            {
-                HFSPath = System.Environment.GetEnvironmentVariable( "HFS" );
-                System.Console.WriteLine( "Linux - found HFS:" + HFSPath );
-            }
-            else
-            {
-                System.Console.WriteLine( string.Format("Unknown environment!") );
-            }
         }
 
         string HAPIIncludePath = "";
@@ -154,48 +94,103 @@ public class HoudiniEngineRuntime : ModuleRules
             new string[]
             {
                 "Core",
-                "CoreUObject",
-                "Engine",
-                "RenderCore",
-                "ShaderCore",
-                "InputCore",
-                "RHI",
-                "Foliage",
-                "Landscape"
+				"CoreUObject",
+				"Engine",
+				"RenderCore",
+				"ShaderCore",
+				"InputCore",
+				"RHI",
+                "EngineSettings",
+                "Settings",
+                //"UnrealEd",
+				//"AssetTools",
+				//"Slate",
+				//"SlateCore",
+				//"Projects",
+				//"PropertyEditor",
+				//"ContentBrowser",
+
+                /*
+				"RawMesh",
+                "Settings",
+				"TargetPlatform",
+				//"LevelEditor",
+				"MainFrame",
+				//"EditorStyle",
+				//"EditorWidgets",
+				"AppFramework"
+                */
              }
         );
 
-       PrivateDependencyModuleNames.AddRange(
+        if (UEBuildConfiguration.bBuildEditor == true)
+        {
+            PublicDependencyModuleNames.AddRange(
+                new string[]
+                {
+                    "UnrealEd",
+                    "AssetTools",
+                }
+            );
+        }
+
+        PublicDependencyModuleNames.AddRange(
+            new string[]
+            {
+                "Slate",
+                "SlateCore",
+                "Projects",
+            }
+        );
+
+        if (UEBuildConfiguration.bBuildEditor == true)
+        {
+            PublicDependencyModuleNames.AddRange(
+                new string[]
+                {
+                    //"UnrealEd",
+				    //"AssetTools",
+				    //"Slate",
+				    //"SlateCore",
+				    
+				    "PropertyEditor",
+				    "ContentBrowser",
+				    "LevelEditor",
+				    "EditorStyle",
+				    "EditorWidgets",
+                    "MainFrame",
+                }
+            );
+        }
+
+        PublicDependencyModuleNames.AddRange(
+            new string[]
+            {
+				"RawMesh",
+				"TargetPlatform",
+				//"LevelEditor",
+				//"EditorStyle",
+				//"EditorWidgets",
+				"AppFramework"
+            }
+        );
+
+        PrivateDependencyModuleNames.AddRange(
             new string[]
             {
                 // ... add private dependencies that you statically link with here ...
             }
-       );
+        );
 
-       if (Target.bBuildEditor == true)
-       {
-            PrivateDependencyModuleNames.AddRange(
-            new string[]
-            {
-                    "AppFramework",
-                    "AssetTools",
-                    "EditorStyle",
-                    "EditorWidgets",
-                    "LevelEditor",
-                    "MainFrame",
-                    "MeshPaint",
-                    "Projects",
-                    "PropertyEditor",
-                    "RawMesh",
-                    "Settings",
-                    "Slate",
-                    "SlateCore",
-                    "TargetPlatform",
-                    "UnrealEd",
-                    "ApplicationCore",
-                }
-            );
+        //if (Target.bBuildEditor == true)
+        //{
+        PrivateDependencyModuleNames.AddRange(
+        new string[]
+        {
+
         }
+        );
+        //}
 
         DynamicallyLoadedModuleNames.AddRange(
             new string[]

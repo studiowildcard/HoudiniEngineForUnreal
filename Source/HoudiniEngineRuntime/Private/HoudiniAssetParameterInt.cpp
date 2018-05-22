@@ -31,8 +31,8 @@
 #include "Internationalization.h"
 #define LOCTEXT_NAMESPACE HOUDINI_LOCTEXT_NAMESPACE 
 
-UHoudiniAssetParameterInt::UHoudiniAssetParameterInt( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetParameterInt::UHoudiniAssetParameterInt( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
     , ValueMin( TNumericLimits<int32>::Lowest() )
     , ValueMax( TNumericLimits<int32>::Max() )
     , ValueUIMin( TNumericLimits<int32>::Lowest() )
@@ -59,8 +59,8 @@ UHoudiniAssetParameterInt::Create(
         }
     }
 
-    UHoudiniAssetParameterInt * HoudiniAssetParameterInt = NewObject< UHoudiniAssetParameterInt >(
-        Outer, UHoudiniAssetParameterInt::StaticClass(), NAME_None, RF_Public | RF_Transactional );
+    UHoudiniAssetParameterInt * HoudiniAssetParameterInt = ConstructObject< UHoudiniAssetParameterInt >(
+		UHoudiniAssetParameterInt::StaticClass(), Outer, NAME_None, RF_Public | RF_Transactional);
 
     HoudiniAssetParameterInt->CreateParameter( InPrimaryObject, InParentParameter, InNodeId, ParmInfo );
     return HoudiniAssetParameterInt;
@@ -84,6 +84,12 @@ UHoudiniAssetParameterInt::CreateParameter(
 
     // Get the actual value for this property.
     Values.SetNumZeroed( TupleSize );
+
+	if (Values.Num() == 0)
+	{
+		return false;
+	}
+
     if ( FHoudiniApi::GetParmIntValues(
         FHoudiniEngine::Get().GetSession(), InNodeId, &Values[ 0 ],
         ValuesIndex, TupleSize ) != HAPI_RESULT_SUCCESS )

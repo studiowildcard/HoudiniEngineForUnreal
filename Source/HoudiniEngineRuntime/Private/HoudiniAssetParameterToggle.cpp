@@ -30,8 +30,8 @@
 #include "Internationalization.h"
 #define LOCTEXT_NAMESPACE HOUDINI_LOCTEXT_NAMESPACE 
 
-UHoudiniAssetParameterToggle::UHoudiniAssetParameterToggle( const FObjectInitializer & ObjectInitializer )
-    : Super( ObjectInitializer )
+UHoudiniAssetParameterToggle::UHoudiniAssetParameterToggle( const class FPostConstructInitializeProperties& PCIP )
+    : Super( PCIP )
 {
     // Parameter will have at least one value.
     Values.AddZeroed( 1 );
@@ -54,8 +54,8 @@ UHoudiniAssetParameterToggle::Create(
         }
     }
 
-    UHoudiniAssetParameterToggle * HoudiniAssetParameterToggle = NewObject< UHoudiniAssetParameterToggle >(
-        Outer, UHoudiniAssetParameterToggle::StaticClass(), NAME_None, RF_Public | RF_Transactional );
+    UHoudiniAssetParameterToggle * HoudiniAssetParameterToggle = ConstructObject< UHoudiniAssetParameterToggle >(
+		UHoudiniAssetParameterToggle::StaticClass(), Outer, NAME_None, RF_Public | RF_Transactional);
 
     HoudiniAssetParameterToggle->CreateParameter( InPrimaryObject, InParentParameter, InNodeId, ParmInfo );
     return HoudiniAssetParameterToggle;
@@ -175,9 +175,9 @@ UHoudiniAssetParameterToggle::Serialize( FArchive & Ar )
 #if WITH_EDITOR
 
 void
-UHoudiniAssetParameterToggle::CheckStateChanged( ECheckBoxState NewState, int32 Idx )
+UHoudiniAssetParameterToggle::CheckStateChanged( ESlateCheckBoxState::Type NewState, int32 Idx )
 {
-    int32 bState = ( NewState == ECheckBoxState::Checked );
+    int32 bState = ( NewState == ESlateCheckBoxState::Type::Checked );
 
     if ( Values[ Idx ] != bState )
     {
@@ -197,13 +197,13 @@ UHoudiniAssetParameterToggle::CheckStateChanged( ECheckBoxState NewState, int32 
     }
 }
 
-ECheckBoxState
+ESlateCheckBoxState::Type
 UHoudiniAssetParameterToggle::IsChecked( int32 Idx ) const
 {
     if ( Values[ Idx ] )
-        return ECheckBoxState::Checked;
+        return ESlateCheckBoxState::Type::Checked;
 
-    return ECheckBoxState::Unchecked;
+    return ESlateCheckBoxState::Type::Unchecked;
 }
 
 #endif
