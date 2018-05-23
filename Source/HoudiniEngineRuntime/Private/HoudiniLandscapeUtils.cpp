@@ -2428,16 +2428,19 @@ bool FHoudiniLandscapeUtils::AddLandscapeMeshIndicesAndMaterialsAttribute(
         if ( !SelectedComponents.Contains( LandscapeComponent ) )
             continue;
 
-        // If component has an override material, we need to get the raw name (if exporting materials).
-        if ( bExportMaterials && LandscapeComponent->OverrideMaterial )
+        if ( bExportMaterials )
         {
-            MaterialRawStr = FHoudiniEngineUtils::ExtractRawName( LandscapeComponent->OverrideMaterial->GetName() );	    
-        }
+            // If component has an override material, we need to get the raw name (if exporting materials).
+            if ( LandscapeComponent->OverrideMaterial )
+            {
+                MaterialRawStr = FHoudiniEngineUtils::ExtractRawName(LandscapeComponent->OverrideMaterial->GetName());
+            }
 
-        // If component has an override hole material, we need to get the raw name (if exporting materials).
-        if ( bExportMaterials && LandscapeComponent->OverrideHoleMaterial )
-        {
-            MaterialHoleRawStr = FHoudiniEngineUtils::ExtractRawName( LandscapeComponent->OverrideHoleMaterial->GetName() );
+            // If component has an override hole material, we need to get the raw name (if exporting materials).
+            if ( LandscapeComponent->OverrideHoleMaterial )
+            {
+                MaterialHoleRawStr = FHoudiniEngineUtils::ExtractRawName(LandscapeComponent->OverrideHoleMaterial->GetName());
+            }
         }
 
         int32 BaseVertIndex = ComponentIdx * VertexCountPerComponent;
@@ -2491,64 +2494,72 @@ bool FHoudiniLandscapeUtils::AddLandscapeMeshIndicesAndMaterialsAttribute(
         FHoudiniEngine::Get().GetSession(), NodeId,
         0, LandscapeFaces.GetData(), 0, LandscapeFaces.Num() ), false );
 
-	//JC: For some reason, passing in material names causes a crash inside a Houdini function... not sure what causes it or if passing in material names is important
- //   // Get name of attribute used for marshalling materials.
- //   std::string MarshallingAttributeMaterialName = HAPI_UNREAL_ATTRIB_MATERIAL;
- //   if ( HoudiniRuntimeSettings && !HoudiniRuntimeSettings->MarshallingAttributeMaterial.IsEmpty() )
- //   {
- //       FHoudiniEngineUtils::ConvertUnrealString(
- //           HoudiniRuntimeSettings->MarshallingAttributeMaterial,
- //           MarshallingAttributeMaterialName );
- //   }
+    if ( bExportMaterials )
+    {
+        if ( !FaceMaterials.Contains( nullptr ) )
+        {
+            // Get name of attribute used for marshalling materials.
+            std::string MarshallingAttributeMaterialName = HAPI_UNREAL_ATTRIB_MATERIAL;
+            if ( HoudiniRuntimeSettings && !HoudiniRuntimeSettings->MarshallingAttributeMaterial.IsEmpty() )
+            {
+                FHoudiniEngineUtils::ConvertUnrealString(
+                    HoudiniRuntimeSettings->MarshallingAttributeMaterial,
+                    MarshallingAttributeMaterialName );
+            }
 
- //   // Get name of attribute used for marshalling hole materials.
- //   std::string MarshallingAttributeMaterialHoleName = HAPI_UNREAL_ATTRIB_MATERIAL_HOLE;
- //   if ( HoudiniRuntimeSettings && !HoudiniRuntimeSettings->MarshallingAttributeMaterialHole.IsEmpty() )
- //   {
- //       FHoudiniEngineUtils::ConvertUnrealString(
- //           HoudiniRuntimeSettings->MarshallingAttributeMaterialHole,
- //           MarshallingAttributeMaterialHoleName );
- //   }
+            // Marshall in override primitive material names.
+            HAPI_AttributeInfo AttributeInfoPrimitiveMaterial;
+            FMemory::Memzero< HAPI_AttributeInfo >( AttributeInfoPrimitiveMaterial );
+            AttributeInfoPrimitiveMaterial.count = FaceMaterials.Num();
+            AttributeInfoPrimitiveMaterial.tupleSize = 1;
+            AttributeInfoPrimitiveMaterial.exists = true;
+            AttributeInfoPrimitiveMaterial.owner = HAPI_ATTROWNER_PRIM;
+            AttributeInfoPrimitiveMaterial.storage = HAPI_STORAGETYPE_STRING;
+            AttributeInfoPrimitiveMaterial.originalOwner = HAPI_ATTROWNER_INVALID;
 
- //   // Marshall in override primitive material names.
- //   HAPI_AttributeInfo AttributeInfoPrimitiveMaterial;
- //   FMemory::Memzero< HAPI_AttributeInfo >( AttributeInfoPrimitiveMaterial );
- //   AttributeInfoPrimitiveMaterial.count = FaceMaterials.Num();
- //   AttributeInfoPrimitiveMaterial.tupleSize = 1;
- //   AttributeInfoPrimitiveMaterial.exists = true;
- //   AttributeInfoPrimitiveMaterial.owner = HAPI_ATTROWNER_PRIM;
- //   AttributeInfoPrimitiveMaterial.storage = HAPI_STORAGETYPE_STRING;
- //   AttributeInfoPrimitiveMaterial.originalOwner = HAPI_ATTROWNER_INVALID;
+            HOUDINI_CHECK_ERROR_RETURN( FHoudiniApi::AddAttribute(
+                FHoudiniEngine::Get().GetSession(), NodeId, 0,
+                MarshallingAttributeMaterialName.c_str(), &AttributeInfoPrimitiveMaterial ), false );
 
- //   HOUDINI_CHECK_ERROR_RETURN( FHoudiniApi::AddAttribute(
- //       FHoudiniEngine::Get().GetSession(), NodeId, 0,
- //       MarshallingAttributeMaterialName.c_str(), &AttributeInfoPrimitiveMaterial ), false );
+            HOUDINI_CHECK_ERROR_RETURN( FHoudiniApi::SetAttributeStringData(
+                FHoudiniEngine::Get().GetSession(), NodeId, 0,
+                MarshallingAttributeMaterialName.c_str(), &AttributeInfoPrimitiveMaterial,
+                (const char **)FaceMaterials.GetData(), 0, AttributeInfoPrimitiveMaterial.count ), false );
+        }
 
-	//HOUDINI_CHECK_ERROR_RETURN(FHoudiniApi::SetAttributeStringData(
-	//	FHoudiniEngine::Get().GetSession(), NodeId, 0,
-	//	MarshallingAttributeMaterialName.c_str(), &AttributeInfoPrimitiveMaterial,
-	//	FaceMaterials.GetData(), 0, AttributeInfoPrimitiveMaterial.count), false);
+        if ( !FaceHoleMaterials.Contains( nullptr ) )
+        {
+            // Get name of attribute used for marshalling hole materials.
+            std::string MarshallingAttributeMaterialHoleName = HAPI_UNREAL_ATTRIB_MATERIAL_HOLE;
+            if ( HoudiniRuntimeSettings && !HoudiniRuntimeSettings->MarshallingAttributeMaterialHole.IsEmpty() )
+            {
+                FHoudiniEngineUtils::ConvertUnrealString(
+                    HoudiniRuntimeSettings->MarshallingAttributeMaterialHole,
+                    MarshallingAttributeMaterialHoleName );
+            }
 
- //   // Marshall in override primitive material hole names.
- //   HAPI_AttributeInfo AttributeInfoPrimitiveMaterialHole;
- //   FMemory::Memzero< HAPI_AttributeInfo >( AttributeInfoPrimitiveMaterialHole );
- //   AttributeInfoPrimitiveMaterialHole.count = FaceHoleMaterials.Num();
- //   AttributeInfoPrimitiveMaterialHole.tupleSize = 1;
- //   AttributeInfoPrimitiveMaterialHole.exists = true;
- //   AttributeInfoPrimitiveMaterialHole.owner = HAPI_ATTROWNER_PRIM;
- //   AttributeInfoPrimitiveMaterialHole.storage = HAPI_STORAGETYPE_STRING;
- //   AttributeInfoPrimitiveMaterialHole.originalOwner = HAPI_ATTROWNER_INVALID;
+            // Marshall in override primitive material hole names.
+            HAPI_AttributeInfo AttributeInfoPrimitiveMaterialHole;
+            FMemory::Memzero< HAPI_AttributeInfo >( AttributeInfoPrimitiveMaterialHole );
+            AttributeInfoPrimitiveMaterialHole.count = FaceHoleMaterials.Num();
+            AttributeInfoPrimitiveMaterialHole.tupleSize = 1;
+            AttributeInfoPrimitiveMaterialHole.exists = true;
+            AttributeInfoPrimitiveMaterialHole.owner = HAPI_ATTROWNER_PRIM;
+            AttributeInfoPrimitiveMaterialHole.storage = HAPI_STORAGETYPE_STRING;
+            AttributeInfoPrimitiveMaterialHole.originalOwner = HAPI_ATTROWNER_INVALID;
 
- //   HOUDINI_CHECK_ERROR_RETURN( FHoudiniApi::AddAttribute(
- //       FHoudiniEngine::Get().GetSession(),
- //       NodeId, 0, MarshallingAttributeMaterialHoleName.c_str(),
- //       &AttributeInfoPrimitiveMaterialHole ), false );
+            HOUDINI_CHECK_ERROR_RETURN( FHoudiniApi::AddAttribute(
+                FHoudiniEngine::Get().GetSession(),
+                NodeId, 0, MarshallingAttributeMaterialHoleName.c_str(),
+                &AttributeInfoPrimitiveMaterialHole ), false );
 
- //   HOUDINI_CHECK_ERROR_RETURN( FHoudiniApi::SetAttributeStringData(
- //       FHoudiniEngine::Get().GetSession(),
- //       NodeId, 0, MarshallingAttributeMaterialHoleName.c_str(),
- //       &AttributeInfoPrimitiveMaterialHole, (const char **) FaceHoleMaterials.GetData(), 0,
- //       AttributeInfoPrimitiveMaterialHole.count ), false );
+            HOUDINI_CHECK_ERROR_RETURN( FHoudiniApi::SetAttributeStringData(
+                FHoudiniEngine::Get().GetSession(),
+                NodeId, 0, MarshallingAttributeMaterialHoleName.c_str(),
+                &AttributeInfoPrimitiveMaterialHole, (const char **) FaceHoleMaterials.GetData(), 0,
+                AttributeInfoPrimitiveMaterialHole.count ), false );
+        }
+    }
 
     return true;
 }
