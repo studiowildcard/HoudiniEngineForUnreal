@@ -1386,6 +1386,9 @@ UHoudiniAssetComponent::PostCook( bool bCookError )
             ++IterAssets )
         {
             UHoudiniAssetComponent * DownstreamAsset = IterAssets.Key();
+            if ( !DownstreamAsset )
+                continue;
+
             DownstreamAsset->bManualRecookRequested = true;
             DownstreamAsset->NotifyParameterChanged( nullptr );
         }
