@@ -575,6 +575,7 @@ FHoudiniEngineBakeUtils::BakeHoudiniActorToActors_InstancedActors(
 				{
 					NewActor->SetActorLabel(NewNameStr);
 					NewActor->SetFolderPath(BaseName);
+					NewActor->SetActorTransform(InstActor->GetTransform());
 				}
 			}
 		}
