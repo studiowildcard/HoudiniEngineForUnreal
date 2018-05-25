@@ -1526,6 +1526,10 @@ UHoudiniAssetComponent::TickHoudiniComponent()
 
 					// Update properties panel after instantiation.
 					UpdateEditorProperties(true);
+
+                        // We may have toolshelf input presets to apply (may cause a recook)
+                        if ( HoudiniToolInputPreset.Num() > 0 )
+                            ApplyHoudiniToolInputPreset();
 				}
 				else
 				{
@@ -2752,15 +2756,18 @@ UHoudiniAssetComponent::CheckedUploadTransform()
             if ( !FHoudiniEngineUtils::HapiSetAssetTransform( AssetId, GetComponentTransform() ) )
                 HOUDINI_LOG_MESSAGE( TEXT( "Failed Uploading Transformation change back to HAPI." ) );
         }
+    }
 
         // If transforms trigger cooks, we need to schedule a cook.
         if ( bTransformChangeTriggersCooks )
         {
+        if (bLoadedComponent && !FHoudiniEngineUtils::IsValidAssetId(AssetId) && !bAssetIsBeingInstantiated)
+            StartTaskAssetCookingManual();
+
             bComponentNeedsCook = true;
             StartHoudiniTicking();
         }
     }
-}
 
 void 
 UHoudiniAssetComponent::SetBakingBaseNameOverride( const FHoudiniGeoPartObject& GeoPartObject, const FString& BaseName )
@@ -5760,10 +5767,24 @@ UHoudiniAssetComponent::SetHoudiniToolInputPresets( const TMap<UObject*, int32>&
 void
 UHoudiniAssetComponent::ApplyHoudiniToolInputPreset()
 {
+    if ( HoudiniToolInputPreset.Num() <= 0 )
+        return;
+
     // We'll ignore inputs that have been preset to a curve type
     TArray< UHoudiniAssetInput*> InputArray;
     for ( auto CurrentInput : Inputs )
     {
+        if ( CurrentInput->GetChoiceIndex() != EHoudiniAssetInputType::CurveInput )
+            InputArray.Add( CurrentInput );
+    }
+
+    // Also look for ObjectPath parameter inputs
+    for ( auto CurrentParam : Parameters )
+    {
+        UHoudiniAssetInput* CurrentInput = Cast< UHoudiniAssetInput > ( CurrentParam.Value );
+        if ( !CurrentInput )
+            continue;
+
         if ( CurrentInput->GetChoiceIndex() != EHoudiniAssetInputType::CurveInput )
             InputArray.Add( CurrentInput );
     }
