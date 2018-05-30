@@ -1342,8 +1342,7 @@ UHoudiniAssetComponent::PostCook( bool bCookError )
         NewStaticMeshes, 
         ComponentTransform ) )
     {
-        // Remove all duplicates. After this operation, old map will have meshes which we need
-        // to deallocate.
+        // Remove all duplicates. After this operation, old map will have meshes which we need to deallocate.
         for ( TMap< FHoudiniGeoPartObject, UStaticMesh * >::TIterator
             Iter( NewStaticMeshes ); Iter; ++Iter )
         {
@@ -1357,6 +1356,9 @@ UHoudiniAssetComponent::PostCook( bool bCookError )
                 // Mesh has not changed, we need to remove it from the old map to avoid deallocation.
                 StaticMeshes.Remove( HoudiniGeoPartObject );
             }
+
+            // See if we need to update the HoudiniAssetComponent uproperties
+            FHoudiniEngineUtils::UpdateUPropertyAttributesOnObject( this, HoudiniGeoPartObject );
         }
 
         // Make sure rendering is done
@@ -4024,9 +4026,12 @@ UHoudiniAssetComponent::NotifyParameterChanged( UHoudiniAssetParameter * Houdini
         // Some parameter types won't require a full update of the editor panel
         // This will avoid breaking the current selection
         UClass* FoundClass = HoudiniAssetParameter->GetClass();
+        /*
         if ( FoundClass->IsChildOf< UHoudiniAssetParameterFloat >()
             || FoundClass->IsChildOf< UHoudiniAssetParameterInt >()
             || FoundClass->IsChildOf< UHoudiniAssetParameterString >() )
+        */
+        if ( !FoundClass->IsChildOf< UHoudiniAssetInput >() )
             bEditorPropertiesNeedFullUpdate = false;
     }
 
