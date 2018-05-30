@@ -6,8 +6,8 @@
 
 // #JuddHelp
 
-UHoudiniToolProperties::UHoudiniToolProperties(const FObjectInitializer & ObjectInitializer)
-	:Super(ObjectInitializer)
+UHoudiniToolProperties::UHoudiniToolProperties(const class FPostConstructInitializeProperties& PCIP)
+	: Super(PCIP)
 	, Name()
 	, Type(EHoudiniToolType::HTOOLTYPE_OPERATOR_SINGLE)
 	, ToolTip()
