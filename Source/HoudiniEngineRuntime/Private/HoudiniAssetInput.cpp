@@ -225,6 +225,7 @@ UHoudiniAssetInput::UHoudiniAssetInput( const class FPostConstructInitializeProp
     bLandscapeAutoSelectComponent = true;
     bPackBeforeMerge = false;
     bExportAllLODs = false;
+    bExportSockets = false;
 
     ChoiceStringValue = TEXT( "" );
 
@@ -389,6 +390,33 @@ UHoudiniAssetInput::DisconnectAndDestroyInputAsset()
                 FHoudiniEngineUtils::HapiDisconnectAsset( HostAssetId, InputIndex );
         }
 
+        // Destroy all the geo input assets
+        for ( HAPI_NodeId AssetNodeId : CreatedInputDataAssetIds )
+        {
+            if ( FHoudiniEngineUtils::IsHoudiniNodeValid( AssetNodeId ) )
+                FHoudiniEngineUtils::DestroyHoudiniAsset( AssetNodeId );
+        }
+        CreatedInputDataAssetIds.Empty();
+
+        // Then simply destroy the input's parent OBJ node
+        HAPI_NodeId ParentId = FHoudiniEngineUtils::HapiGetParentNodeId( ConnectedAssetId );
+        if ( FHoudiniEngineUtils::IsHoudiniNodeValid( ParentId ) )
+            FHoudiniEngineUtils::DestroyHoudiniAsset( ParentId );
+
+        if ( FHoudiniEngineUtils::IsHoudiniNodeValid( ConnectedAssetId ) )
+            FHoudiniEngineUtils::DestroyHoudiniAsset( ConnectedAssetId );
+
+        ConnectedAssetId = -1;
+        if ( ChoiceIndex == EHoudiniAssetInputType::WorldInput )
+        {
+            // World Input Actors' Meshes need to have their corresponding Input Assets destroyed too.
+            for ( int32 n = 0; n < InputOutlinerMeshArray.Num(); n++ )
+            {
+                InputOutlinerMeshArray[ n ].AssetId = -1;
+            }
+        }
+
+        /*
         if ( ChoiceIndex == EHoudiniAssetInputType::WorldInput )
         {
             // World Input Actors' Meshes need to have their corresponding Input Assets destroyed too.
@@ -423,6 +451,7 @@ UHoudiniAssetInput::DisconnectAndDestroyInputAsset()
             FHoudiniEngineUtils::DestroyHoudiniAsset( ConnectedAssetId );
             ConnectedAssetId = -1;
         }
+        */
     }
 }
 
@@ -647,10 +676,9 @@ UHoudiniAssetInput::UploadParameterValue()
                     DisconnectAndDestroyInputAsset();
 
                     // Connect input and create connected asset. Will return by reference.
-                    if ( !FHoudiniEngineUtils::HapiCreateInputNodeForData( 
+                    if ( !FHoudiniEngineUtils::HapiCreateInputNodeForObjects( 
                         HostAssetId, InputObjects, InputTransforms,
-                        ConnectedAssetId, CreatedInputDataAssetIds, bExportAllLODs ) )
-
+                        ConnectedAssetId, CreatedInputDataAssetIds, bExportAllLODs, bExportSockets ) )
                     {
                         bChanged = false;
                         ConnectedAssetId = -1;
@@ -801,7 +829,7 @@ UHoudiniAssetInput::UploadParameterValue()
                     Bounds = AssetComponent->GetAssetBounds( this, true );
 
                 // Connect input and create connected asset. Will return by reference.
-                if ( !FHoudiniEngineUtils::HapiCreateInputNodeForData(
+                if ( !FHoudiniEngineUtils::HapiCreateInputNodeForLandscape(
                         HostAssetId, InputLandscapeProxy,
                         ConnectedAssetId, CreatedInputDataAssetIds,
                         bLandscapeExportSelectionOnly, bLandscapeExportCurves,
@@ -836,9 +864,9 @@ UHoudiniAssetInput::UploadParameterValue()
                     DisconnectAndDestroyInputAsset();
 
                     // Connect input and create connected asset. Will return by reference.
-                    if ( !FHoudiniEngineUtils::HapiCreateInputNodeForData(
-                        HostAssetId, InputOutlinerMeshArray, ConnectedAssetId,
-                        UnrealSplineResolution, bExportAllLODs ) )
+                    if ( !FHoudiniEngineUtils::HapiCreateInputNodeForWorldOutliner(
+                        HostAssetId, InputOutlinerMeshArray, ConnectedAssetId, CreatedInputDataAssetIds,
+                        UnrealSplineResolution, bExportAllLODs, bExportSockets ) )
                     {
                         bChanged = false;
                         ConnectedAssetId = -1;
@@ -1510,9 +1538,10 @@ UHoudiniAssetInput::ChangeInputType(const EHoudiniAssetInputType::Enum& newType)
 
             // Force recook and reconnect of the input assets.
             HAPI_NodeId HostAssetId = GetAssetId();
-            if (FHoudiniEngineUtils::HapiCreateInputNodeForData(
+            if ( FHoudiniEngineUtils::HapiCreateInputNodeForWorldOutliner(
                 HostAssetId, InputOutlinerMeshArray,
-                ConnectedAssetId, UnrealSplineResolution))
+                ConnectedAssetId, CreatedInputDataAssetIds,
+                UnrealSplineResolution ) )
             {
                 ConnectInputNode();
             }
@@ -2550,7 +2579,7 @@ UHoudiniAssetInput::CheckStateChangedExportAllLODs( ESlateCheckBoxState::Type Ne
     // Record undo information.
     FScopedTransaction Transaction(
         TEXT(HOUDINI_MODULE_RUNTIME),
-        LOCTEXT("HoudiniInputChange", "Houdini Input Transform Type change."),
+        LOCTEXT("HoudiniInputChange", "Houdini Input Export all LODs changed."),
         PrimaryObject);
     Modify();
 
@@ -2570,6 +2599,42 @@ ESlateCheckBoxState::Type
 UHoudiniAssetInput::IsCheckedExportAllLODs() const
 {
     if ( bExportAllLODs )
+		return ESlateCheckBoxState::Type::Checked;
+
+	return ESlateCheckBoxState::Type::Unchecked;
+}
+
+void
+UHoudiniAssetInput::CheckStateChangedExportSockets(ESlateCheckBoxState::Type NewState)
+{
+	int32 bState = (NewState == ESlateCheckBoxState::Type::Checked);
+
+    if ( bExportSockets == bState )
+        return;
+
+    // Record undo information.
+    FScopedTransaction Transaction(
+        TEXT( HOUDINI_MODULE_RUNTIME ),
+        LOCTEXT( "HoudiniInputChange", "Houdini Input export sockets changed." ),
+        PrimaryObject );
+    Modify();
+
+    MarkPreChanged();
+
+    bExportSockets = bState;
+
+    // Changing the export of LODs changes the StaticMesh!
+    if ( HasSockets() )
+        bStaticMeshChanged = true;
+
+    // Mark this parameter as changed.
+    MarkChanged();
+}
+
+ESlateCheckBoxState::Type
+UHoudiniAssetInput::IsCheckedExportSockets() const
+{
+    if (bExportSockets)
 		return ESlateCheckBoxState::Type::Checked;
 
 	return ESlateCheckBoxState::Type::Unchecked;
@@ -2904,17 +2969,18 @@ operator<<( FArchive & Ar, FHoudiniAssetInputOutlinerMesh & HoudiniAssetInputOut
 }
 
 FBox
-UHoudiniAssetInput::GetInputBounds()
+UHoudiniAssetInput::GetInputBounds( const FVector& ParentLocation )
 {
     FBox Bounds( ForceInitToZero );
 
     if ( IsCurveAssetConnected() && InputCurve )
     {
+        // Houdini Curves are expressed locally so we need to add the parent component's transform
         TArray<FVector> CurvePositions;
         InputCurve->GetCurvePositions( CurvePositions );
 
         for ( int32 n = 0; n < CurvePositions.Num(); n++ )
-            Bounds += CurvePositions[ n ];
+            Bounds += ( ParentLocation + CurvePositions[ n ] );
     }
 
     if ( IsWorldInputAssetConnected() )
@@ -3519,6 +3585,49 @@ UHoudiniAssetInput::HasLODs() const
                     continue;
 
                 if ( SM->GetNumLODs() > 1 )
+                    return true;
+            }
+        }
+        break;
+    }
+
+    return false;
+}
+
+bool
+UHoudiniAssetInput::HasSockets() const
+{
+    switch ( ChoiceIndex )
+    {
+        case EHoudiniAssetInputType::GeometryInput:
+        {
+            if ( !InputObjects.Num() )
+                return false;
+
+            for ( int32 Idx = 0; Idx < InputObjects.Num(); Idx++ )
+            {
+                UStaticMesh* SM = Cast<UStaticMesh>( InputObjects[ Idx ] );
+                if ( !SM )
+                    continue;
+
+                if ( SM->Sockets.Num() > 0 )
+                    return true;
+            }
+        }
+        break;
+
+        case EHoudiniAssetInputType::WorldInput:
+        {
+            if ( !InputOutlinerMeshArray.Num() )
+                return false;
+
+            for ( int32 Idx = 0; Idx < InputOutlinerMeshArray.Num(); Idx++ )
+            {
+                UStaticMesh* SM = InputOutlinerMeshArray[ Idx ].StaticMesh;
+                if ( !SM )
+                    continue;
+
+                if ( SM->Sockets.Num() > 1 )
                     return true;
             }
         }

@@ -217,13 +217,16 @@ class HOUDINIENGINERUNTIME_API UHoudiniAssetInput : public UHoudiniAssetParamete
         FText GetCurrentSelectionText() const;
 
         // Return the bounds of this input
-        FBox GetInputBounds();
+        FBox GetInputBounds( const FVector& ParentLocation );
 
         /** Return true if this parameter has been changed. **/
         bool HasChanged() const override;
 
         /** Retruns true if at least one object in this input has more than 1 LOD **/
         bool HasLODs() const;
+
+        /** Retruns true if at least one object in this input has sockets **/
+        bool HasSockets() const;
 
         /** Returns the input's transform scale values **/
         TOptional< float > GetPositionX( int32 AtIndex ) const;
@@ -440,11 +443,17 @@ class HOUDINIENGINERUNTIME_API UHoudiniAssetInput : public UHoudiniAssetParamete
         /** Return checked state of transform type checkbox. **/
         ESlateCheckBoxState::Type IsCheckedKeepWorldTransform() const;
 
-        /** Check if state of the export all LODs checkbox has changed. **/
+        /** Check if state of the export LODs checkbox has changed. **/
 		void CheckStateChangedExportAllLODs(ESlateCheckBoxState::Type NewState);
 
-        /** Return checked state of export LOD checkbox. **/
+        /** Return checked state of export LODs checkbox. **/
 		ESlateCheckBoxState::Type IsCheckedExportAllLODs() const;
+
+        /** Check if state of the export sockets checkbox has changed. **/
+		void CheckStateChangedExportSockets(ESlateCheckBoxState::Type NewState);
+
+        /** Return checked state of export sockets checkbox. **/
+		ESlateCheckBoxState::Type IsCheckedExportSockets() const;
 
         /** Handler for landscape recommit button. **/
         FReply OnButtonClickRecommit();
@@ -583,6 +592,9 @@ class HOUDINIENGINERUNTIME_API UHoudiniAssetInput : public UHoudiniAssetParamete
 
                 /** Indicates that all LODs in the input should be marshalled to Houdini **/
                 uint32 bExportAllLODs : 1;
+
+                /** Indicates that all sockets in the input should be marshalled to Houdini **/
+                uint32 bExportSockets : 1;
             };
 
             uint32 HoudiniAssetInputFlagsPacked;

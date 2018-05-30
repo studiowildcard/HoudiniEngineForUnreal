@@ -277,7 +277,7 @@ struct HOUDINIENGINERUNTIME_API FHoudiniEngineUtils
         static bool GetAssetPreset( HAPI_NodeId AssetId, TArray< char > & PresetBuffer );
 
         /** Return true if asset is valid. **/
-        static bool IsHoudiniAssetValid( HAPI_NodeId AssetId );
+        static bool IsHoudiniNodeValid( const HAPI_NodeId& AssetId );
 
         /** Destroy asset, returns the status. **/
         static bool DestroyHoudiniAsset( HAPI_NodeId AssetId );
@@ -359,7 +359,7 @@ struct HOUDINIENGINERUNTIME_API FHoudiniEngineUtils
         static bool HapiGetObjectTransforms( HAPI_NodeId AssetId, TArray< HAPI_Transform > & ObjectTransforms );
 
         /** HAPI : Marshalling, extract landscape geometry and upload it. Return true on success. **/
-        static bool HapiCreateInputNodeForData(
+        static bool HapiCreateInputNodeForLandscape(
             const HAPI_NodeId& HostAssetId, ALandscapeProxy * LandscapeProxy,
             HAPI_NodeId & ConnectedAssetId, TArray< HAPI_NodeId >& OutCreatedNodeIds,
             const bool& bExportOnlySelected, const bool& bExportCurves, const bool& bExportMaterials,
@@ -368,32 +368,36 @@ struct HOUDINIENGINERUNTIME_API FHoudiniEngineUtils
             const bool& bAutoSelectComponents );
 
         /** HAPI : Marshaling, extract geometry and create input asset for it - return true on success **/
-        static bool HapiCreateInputNodeForData(
-            HAPI_NodeId HostAssetId, 
+        static bool HapiCreateInputNodeForStaticMesh(
             UStaticMesh * Mesh,
             HAPI_NodeId & ConnectedAssetId,
+            TArray< HAPI_NodeId >& OutCreatedNodeIds,
             class UStaticMeshComponent* StaticMeshComponent = nullptr,
-            const bool& ExportAllLODs = false );
+            const bool& ExportAllLODs = false,
+            const bool& ExportSockets = false );
 
         /** HAPI : Marshaling, extract geometry and create input asset for it - return true on success **/
-        static bool HapiCreateInputNodeForData(
+        static bool HapiCreateInputNodeForObjects(
             HAPI_NodeId HostAssetId,
             TArray<UObject *>& InputObjects,
             const TArray< FTransform >& InputTransforms,
             HAPI_NodeId & ConnectedAssetId, 
             TArray< HAPI_NodeId >& OutCreatedNodeIds,
-            const bool& ExportAllLODs = false );
+            const bool& ExportAllLODs = false,
+            const bool& ExportSockets = false );
 
         /** HAPI : Marshaling, extract geometry and create input asset for it - return true on success **/
-        static bool HapiCreateInputNodeForData(
+        static bool HapiCreateInputNodeForWorldOutliner(
             HAPI_NodeId HostAssetId,
             TArray< FHoudiniAssetInputOutlinerMesh > & OutlinerMeshArray,
             HAPI_NodeId & ConnectedAssetId,
+            TArray< HAPI_NodeId >& OutCreatedNodeIds,
             const float& SplineResolution = -1.0f,
-            const bool& ExportAllLODs = false );
+            const bool& ExportAllLODs = false,
+            const bool& ExportSockets = false );
 
         /** HAPI : Marshaling, extract points from the Unreal Spline and create an input curve for it - return true on success **/
-        static bool HapiCreateInputNodeForData(
+        static bool HapiCreateInputNodeForSpline(
             HAPI_NodeId HostAssetId,
             USplineComponent * SplineComponent,
             HAPI_NodeId & ConnectedAssetId,
@@ -514,6 +518,8 @@ struct HOUDINIENGINERUNTIME_API FHoudiniEngineUtils
         static HAPI_ParmId HapiFindParameterByNameOrTag( const HAPI_NodeId& NodeId, const std::string ParmName );
         static HAPI_ParmId HapiFindParameterByNameOrTag( const HAPI_NodeId& NodeId, const std::string ParmName, HAPI_ParmInfo& FoundParmInfo );
 
+        /** HAPI : Return a give node's parent ID, -1 if none **/
+        static HAPI_NodeId HapiGetParentNodeId( const HAPI_NodeId& NodeId );
 #if WITH_EDITOR
 
         /** Helper routine to check invalid lightmap faces. **/
