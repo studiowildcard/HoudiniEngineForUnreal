@@ -29,6 +29,7 @@
 #include "Framework/MultiBox/MultiBoxExtender.h"
 #include "HoudiniRuntimeSettings.h"
 #include "Framework/Commands/Commands.h"
+#include "LevelEditor.h"
 
 
 class IAssetTools;
@@ -48,6 +49,7 @@ struct FHoudiniTool
         , Icon( InIcon )
         , HelpURL( InHelpURL )
         , Type( InType )
+        , DefaultTool( false )
     {
     }
     TAssetPtr < class UHoudiniAsset > HoudiniAsset;
@@ -66,8 +68,10 @@ struct FHoudiniTool
 
     /** The type of tool, this will change how the asset handles the current selection **/
     EHoudiniToolType Type;
-};
 
+    /** Indicate this is one of the default tools **/
+    bool DefaultTool;
+};
 
 class FHoudiniEngineEditor : public IHoudiniEngineEditor, public FEditorUndoClient
 {
@@ -166,10 +170,17 @@ class FHoudiniEngineEditor : public IHoudiniEngineEditor, public FEditorUndoClie
         /** Helper delegate used to determine if BakeAllAssets can be executed. **/
         bool CanBakeAllAssets() const;
 
-        /** Helper function for restqrting the current Houdini Engine session. **/
+        /** Helper function for restarting the current Houdini Engine session. **/
         void RestartSession();
 
+        /** Returns the HoudiniTools currently available for the shelf **/
         const TArray< TSharedPtr<FHoudiniTool> >& GetHoudiniTools() { return HoudiniTools; }
+
+        /** Returns the HoudiniTools array  **/
+        TArray< TSharedPtr<FHoudiniTool> >* GetHoudiniToolsForWrite() { return &HoudiniTools; }
+
+        /** Adds a new Houdini Tools to the array **/
+        void AddHoudiniTool( const FHoudiniTool& NewTool );
 
         /** Menu action to pause cooking for all Houdini Assets  **/
         void PauseAssetCooking();
@@ -198,6 +209,15 @@ class FHoudiniEngineEditor : public IHoudiniEngineEditor, public FEditorUndoClie
         /** Helper function for accessing the current world selection **/
         static int32 GetWorldSelection( TArray< UObject* >& WorldSelection, bool bHoudiniAssetActorsOnly = false );
 
+        /** Helper function for retrieving an HoudiniTool in the Editor list **/
+        bool FindHoudiniTool( const FHoudiniTool& Tool, int32& FoundIndex, bool& IsDefault );
+
+        /** Helper function for retrieving an HoudiniTool in the Houdini Runtime Settings list **/
+        bool FindHoudiniToolInHoudiniSettings( const FHoudiniTool& Tool, int32& FoundIndex );
+
+        /** Rebuild the editor's Houdini Tool list **/
+        void UpdateHoudiniToolList();
+
     protected:
 
         /** Register AssetType action. **/
@@ -214,6 +234,16 @@ class FHoudiniEngineEditor : public IHoudiniEngineEditor, public FEditorUndoClie
 
         /** Adds the custom Houdini Engine console commands **/
         void RegisterConsoleCommands();
+
+        ///** Adds the custom Houdini Engine commands to the world outliner context menu **/
+        //void AddLevelViewportMenuExtender();
+
+        ///** Removes the custom Houdini Engine commands from the world outliner context menu **/
+        //void RemoveLevelViewportMenuExtender();
+
+        /** Return all the custom Houdini Engine commands for the world outliner context menu **/
+        TSharedRef<FExtender> GetLevelViewportContextMenuExtender(
+            const TSharedRef<FUICommandList> CommandList, const TArray<AActor*> InActors );
 
     private:
 
@@ -246,6 +276,8 @@ class FHoudiniEngineEditor : public IHoudiniEngineEditor, public FEditorUndoClie
         TArray< TSharedPtr<FHoudiniTool> > HoudiniTools;
 
         TSharedPtr<class FUICommandList> HEngineCommands;
+
+		FLevelEditorModule::FLevelViewportMenuExtender_SelectedActors LevelViewportExtenderHandle;
 };
 
 
