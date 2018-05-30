@@ -963,6 +963,12 @@ FHoudiniParameterDetails::CreateWidgetFloat( IDetailCategoryBuilder & LocalDetai
     }
 
     FDetailWidgetRow & Row = LocalDetailCategoryBuilder.AddCustomRow( TEXT("") );
+    if ( SwappedAxis3Vector )
+    {
+        // Ignore the swapping if that parameter has the noswap tag
+        if ( InParam.NoSwap )
+            SwappedAxis3Vector = false;
+    }
 
     // Create the standard parameter name widget.
     CreateNameWidget( &InParam, Row, true );

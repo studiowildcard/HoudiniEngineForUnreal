@@ -1318,7 +1318,7 @@ UHoudiniAssetComponent::PostCook( bool bCookError )
     CreateInputs();
     CreateHandles();
 
-    if (bCookError)
+    if ( bCookError )
     {
         // We need to reset the manual recook flag here to avoid endless cooking
         bManualRecookRequested = false;
@@ -2855,6 +2855,7 @@ UHoudiniAssetComponent::CalcBounds( const FTransform & LocalToWorld ) const
         BoundingBox.ExpandBy( 1.0f );
 
     LocalBounds = FBoxSphereBounds( BoundingBox );
+    LocalBounds.Origin = LocalToWorld.GetLocation();
 
     for (int32 Idx = 0; Idx < AttachChildren.Num(); ++Idx)
     {
@@ -5712,7 +5713,7 @@ UHoudiniAssetComponent::GetAssetBounds( UHoudiniAssetInput* IgnoreInput, const b
     // ... all our landscapes
     if ( !bIgnoreGeneratedLandscape )
     {
-        for (TMap< FHoudiniGeoPartObject, ALandscape * >::TConstIterator Iter( LandscapeComponents); Iter; ++Iter )
+        for (TMap< FHoudiniGeoPartObject, ALandscape * >::TConstIterator Iter( LandscapeComponents ); Iter; ++Iter )
         {
             ALandscape * Landscape = Iter.Value();
             if ( !Landscape )
@@ -5870,5 +5871,37 @@ UHoudiniAssetComponent::ApplyHoudiniToolInputPreset()
     HoudiniToolInputPreset.Empty();
 }
 #endif // WITH_EDITOR
+
+FPrimitiveSceneProxy*
+UHoudiniAssetComponent::CreateSceneProxy()
+{
+    /** Represents a UHoudiniAssetComponent to the scene manager. */
+    class FHoudiniAssetSceneProxy final : public FPrimitiveSceneProxy
+    {
+        public:
+            SIZE_T GetTypeHash() const
+            {
+                static size_t UniquePointer;
+                return reinterpret_cast<size_t>( &UniquePointer );
+            }
+
+            FHoudiniAssetSceneProxy( const UHoudiniAssetComponent* InComponent )
+                : FPrimitiveSceneProxy( InComponent )
+            {
+            }
+
+            virtual FPrimitiveViewRelevance GetViewRelevance(const FSceneView* View)
+            {
+                FPrimitiveViewRelevance Result;
+                Result.bDrawRelevance = IsShown( View );
+                return Result;
+            }
+
+            virtual uint32 GetMemoryFootprint( void ) const override { return( sizeof( *this ) + GetAllocatedSize() ); }
+            uint32 GetAllocatedSize( void ) const { return( FPrimitiveSceneProxy::GetAllocatedSize() ); }
+    };
+
+    return new FHoudiniAssetSceneProxy( this );
+}
 
 #undef LOCTEXT_NAMESPACE
