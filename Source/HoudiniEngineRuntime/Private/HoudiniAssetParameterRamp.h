@@ -37,7 +37,7 @@ class UHoudiniAssetParameterRamp;
 class UHoudiniAssetParameterFloat;
 class UHoudiniAssetParameterColor;
 class UHoudiniAssetParameterChoice;
-class SHoudiniAssetParameterRampCurveEditor;
+class SCurveEditor;
 
 namespace EHoudiniAssetParameterRampKeyInterpolation
 {
@@ -61,6 +61,8 @@ class HOUDINIENGINERUNTIME_API UHoudiniAssetParameterRamp : public UHoudiniAsset
     friend struct FHoudiniParameterDetails;
 
     public:
+
+        virtual ~UHoudiniAssetParameterRamp();
 
         /** Create instance of this class. **/
         static UHoudiniAssetParameterRamp * Create(
@@ -143,6 +145,9 @@ class HOUDINIENGINERUNTIME_API UHoudiniAssetParameterRamp : public UHoudiniAsset
         //! Curves which are being edited.
         UHoudiniAssetParameterRampCurveFloat * HoudiniAssetParameterRampCurveFloat;
         UHoudiniAssetParameterRampCurveColor * HoudiniAssetParameterRampCurveColor;
+#if WITH_EDITOR
+        TSharedPtr<SCurveEditor> CurveEditor;
+#endif
 
         //! Set to true if this ramp is a float ramp. Otherwise is considered a color ramp.
         bool bIsFloatRamp;
