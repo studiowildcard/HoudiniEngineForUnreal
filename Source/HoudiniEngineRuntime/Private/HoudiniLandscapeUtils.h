@@ -67,6 +67,7 @@ struct HOUDINIENGINERUNTIME_API FHoudiniLandscapeUtils
 			ALandscape* ExistingLandscape,
 			const TArray< uint16 >& IntHeightData,
 			const TArray< FLandscapeImportLayerInfo >& ImportLayerInfos,
+			const FTransform& LandscapeTransform,
 			int32 XSize, int32 YSize,
 			int32 NumSectionPerLandscapeComponent, int32 NumQuadsPerLandscapeSection);
 

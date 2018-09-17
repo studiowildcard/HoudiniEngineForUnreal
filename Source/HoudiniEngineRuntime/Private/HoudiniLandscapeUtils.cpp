@@ -2721,6 +2721,7 @@ FHoudiniLandscapeUtils::CreateAllLandscapes(
 			if (UpdateLandscape(
 				ExistingLandscape,
 				IntHeightData, ImportLayerInfos,
+				LandscapeTransform,
 				XSize, YSize,
 				NumSectionPerLandscapeComponent, NumQuadsPerLandscapeSection))
 			{
@@ -2830,6 +2831,7 @@ bool FHoudiniLandscapeUtils::UpdateLandscape(
 	ALandscape* ExistingLandscape,
 	const TArray< uint16 >& IntHeightData,
 	const TArray< FLandscapeImportLayerInfo >& ImportLayerInfos,
+	const FTransform& LandscapeTransform,
 	int32 XSize, int32 YSize,
 	int32 NumSectionPerLandscapeComponent, int32 NumQuadsPerLandscapeSection)
 {
@@ -2909,6 +2911,9 @@ bool FHoudiniLandscapeUtils::UpdateLandscape(
 	ExistingLandscape->RegisterAllComponents();
 
 	ExistingLandscape->GetWorld()->ForceGarbageCollection(true);
+
+	// Set the landscape Transform
+	ExistingLandscape->SetActorTransform(LandscapeTransform);
 
 	return true;
 }
