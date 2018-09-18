@@ -42,7 +42,10 @@ struct FHoudiniToolDescription;
 
 struct FHoudiniTool
 {
-    FHoudiniTool(TAssetPtr < class UHoudiniAsset > InHoudiniAsset, const FText& InName, const EHoudiniToolType& InType, const FText& InToolTipText, const FSlateBrush* InIcon, const FString& InHelpURL )
+    FHoudiniTool(
+        TAssetPtr < class UHoudiniAsset > InHoudiniAsset, const FText& InName,
+        const EHoudiniToolType& InType, const EHoudiniToolSelectionType& InSelType,
+        const FText& InToolTipText, const FSlateBrush* InIcon, const FString& InHelpURL )
         : HoudiniAsset( InHoudiniAsset )
         , Name( InName )
         , ToolTipText( InToolTipText )
@@ -50,6 +53,7 @@ struct FHoudiniTool
         , HelpURL( InHelpURL )
         , Type( InType )
         , DefaultTool( false )
+        , SelectionType( InSelType )
     {
     }
     TAssetPtr < class UHoudiniAsset > HoudiniAsset;
@@ -71,6 +75,9 @@ struct FHoudiniTool
 
     /** Indicate this is one of the default tools **/
     bool DefaultTool;
+
+    /** Indicate what the tool should consider for selection **/
+    EHoudiniToolSelectionType SelectionType;
 };
 
 class FHoudiniEngineEditor : public IHoudiniEngineEditor, public FEditorUndoClient

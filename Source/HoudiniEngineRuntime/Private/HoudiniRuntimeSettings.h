@@ -93,6 +93,19 @@ enum EHoudiniToolType
     HTOOLTYPE_OPERATOR_BATCH UMETA( DisplayName = "Batch Operator" )
 };
 
+UENUM()
+enum class EHoudiniToolSelectionType : uint8
+{
+    // For tools that can be applied both to Content Browser and World selection
+    HTOOL_SELECTION_ALL UMETA( DisplayName = "Content Browser AND World" ),
+
+    // For tools that can be applied only to World selection
+    HTOOL_SELECTION_WORLD_ONLY UMETA( DisplayName = "World selection only" ),
+
+    // For tools that can be applied only to Content Browser selection
+    HTOOL_SELECTION_CB_ONLY UMETA( DisplayName = "Content browser selection only" )
+};
+
 USTRUCT( BlueprintType )
 struct FHoudiniToolDescription
 {
@@ -105,6 +118,10 @@ struct FHoudiniToolDescription
     /** Type of the tool */
     UPROPERTY(Category = Tool, EditAnywhere)
     TEnumAsByte< enum EHoudiniToolType > Type;
+
+    /** Selection Type of the tool */
+    UPROPERTY(Category = Tool, EditAnywhere)
+    EHoudiniToolSelectionType SelectionType;
 
     /** Tooltip shown on mouse hover */
     UPROPERTY( Category = Tool, EditAnywhere )
@@ -309,6 +326,12 @@ class HOUDINIENGINERUNTIME_API UHoudiniRuntimeSettings : public UObject
         // Default resolution used when marshalling the Unreal Splines to HoudiniEngine (step in cm between CVs)
         UPROPERTY(GlobalConfig, EditAnywhere, Category = GeometryMarshalling)
         float MarshallingSplineResolution;
+
+        // If true, generated Landscapes will be marshalled using default unreal scaling. 
+        // Generated landscape will loose a lot of precision on the Z axis but will use the same transforms
+        // as Unreal's default landscape
+        UPROPERTY(GlobalConfig, EditAnywhere, Category = GeometryMarshalling)
+        bool MarshallingLandscapesUseDefaultUnrealScaling;
 
         // If true, generated Landscapes will be using full precision for their ZAxis, 
         // allowing for more precision but preventing them from being sculpted higher/lower than their min/max.

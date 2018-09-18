@@ -5689,6 +5689,13 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
                         // Enable collisions for this static mesh.
                         BodySetup->CollisionTraceFlag = ECollisionTraceFlag::CTF_UseComplexAsSimple;
                     }
+                    else if ( !HoudiniGeoPartObject.bIsSimpleCollisionGeo && !HoudiniGeoPartObject.bIsUCXCollisionGeo )
+                    {
+                        // We dont have collider meshes, or simple colliders, if the LODForCollision uproperty attribute is set
+                        // we need to activate complex collision for that lod to be picked up as collider
+                        if ( HapiCheckAttributeExists( HoudiniGeoPartObject, "unreal_uproperty_LODForCollision", HAPI_ATTROWNER_DETAIL ) )
+                            BodySetup->CollisionTraceFlag = ECollisionTraceFlag::CTF_UseComplexAsSimple;
+                    }
                 }
 
                 // Try to update the uproperties of the StaticMesh
@@ -5742,6 +5749,32 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
 
             } // end for SplitId
 
+            // Add the sockets we found to that part's meshes
+            if ( AllSockets.Num() > 0 )
+            {
+                bool SocketsAdded = false;
+                for ( TMap< FHoudiniGeoPartObject, UStaticMesh * >::TIterator Iter( StaticMeshesOut ); Iter; ++Iter )
+                {
+                    FHoudiniGeoPartObject * HoudiniGeoPartObject = &(Iter.Key());
+                    if ( ( HoudiniGeoPartObject->ObjectId != ObjectInfo.nodeId )
+                        || ( HoudiniGeoPartObject->GeoId != GeoInfo.nodeId )
+                        || ( HoudiniGeoPartObject->PartId != PartIdx  ) )
+                        continue;
+
+                    // This GeoPartObject is from the same object/geo, so we can add the sockets to it
+                    if ( AddMeshSocketsToStaticMesh( Iter.Value(), *HoudiniGeoPartObject, AllSockets, AllSocketsNames, AllSocketsActors, AllSocketsTags ) )
+                        SocketsAdded = true;
+                }
+
+                if ( SocketsAdded )
+                {
+                    // Clean up the sockets for this part
+                    AllSockets.Empty();
+                    AllSocketsNames.Empty();
+                    AllSocketsActors.Empty();
+                    AllSocketsTags.Empty();
+                }
+            }
         } // end for PartId
 
         // There should be no UCX/Simple colliders left now
@@ -5754,7 +5787,7 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
             for ( TMap< FHoudiniGeoPartObject, UStaticMesh * >::TIterator Iter( StaticMeshesOut ); Iter; ++Iter )
             {
                 FHoudiniGeoPartObject * HoudiniGeoPartObject = &( Iter.Key() );
-                if ( ( HoudiniGeoPartObject->ObjectId != ObjectInfo.nodeId ) && ( HoudiniGeoPartObject->GeoId != GeoInfo.nodeId ) )
+                if ( ( HoudiniGeoPartObject->ObjectId != ObjectInfo.nodeId ) || ( HoudiniGeoPartObject->GeoId != GeoInfo.nodeId ) )
                     continue;
 
                 // This GeoPartObject is from the same object/geo, so we can add the sockets to it
@@ -5762,7 +5795,7 @@ bool FHoudiniEngineUtils::CreateStaticMeshesFromHoudiniAsset(
             }
         }
 
-        // Clean up the sockets for this part
+        // Clean up the sockets for this geo
         AllSockets.Empty();
         AllSocketsNames.Empty();
         AllSocketsActors.Empty();

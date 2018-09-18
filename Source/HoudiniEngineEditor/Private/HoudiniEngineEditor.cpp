@@ -541,7 +541,7 @@ FHoudiniEngineEditor::OpenInHoudini()
 
     if ( !FPaths::FileExists( UserTempPath ) )
         return;
-    
+
     // Add a slate notification
     FString Notification = TEXT( "Opening scene in Houdini..." );
     FHoudiniEngineUtils::CreateSlateNotification( Notification );
@@ -549,12 +549,14 @@ FHoudiniEngineEditor::OpenInHoudini()
     // ... and a log message
     HOUDINI_LOG_MESSAGE( TEXT("Opened scene in Houdini.") );
 
+    // Add quotes to the path to avoid issues with spaces
+    UserTempPath = TEXT("\"") + UserTempPath + TEXT("\"");
     // Then open the hip file in Houdini
     FString LibHAPILocation = FHoudiniEngine::Get().GetLibHAPILocation();
-    FString houdiniLocation = LibHAPILocation + "//houdini";
+    FString HoudiniLocation = LibHAPILocation + TEXT("//houdini");
     FPlatformProcess::CreateProc( 
-        houdiniLocation.GetCharArray().GetData(), 
-        UserTempPath.GetCharArray().GetData(), 
+        *HoudiniLocation, 
+        *UserTempPath, 
         true, false, false, 
         nullptr, 0,
 		*TempDir,
@@ -779,6 +781,7 @@ FHoudiniEngineEditor::AddDefaultHoudiniToolToArray( TArray< FHoudiniToolDescript
     ToolArray.Insert( FHoudiniToolDescription{
         TEXT( "Rock Generator" ),
         EHoudiniToolType::HTOOLTYPE_GENERATOR,
+        EHoudiniToolSelectionType::HTOOL_SELECTION_ALL,
         TEXT( "Generates procedural rock meshes" ),
         FFilePath{ ToolsDir / TEXT("rock_generator.png") },
         TAssetPtr<UHoudiniAsset>( Cast<UHoudiniAsset>( FStringAssetReference( TEXT( "HoudiniAsset'/HoudiniEngine/Tools/rock_generator.rock_generator'" ) ).ResolveObject() )),
@@ -789,6 +792,7 @@ FHoudiniEngineEditor::AddDefaultHoudiniToolToArray( TArray< FHoudiniToolDescript
     ToolArray.Insert( FHoudiniToolDescription{
         TEXT( "Boolean" ),
         EHoudiniToolType::HTOOLTYPE_OPERATOR_MULTI,
+        EHoudiniToolSelectionType::HTOOL_SELECTION_WORLD_ONLY,
         TEXT( "Apply boolean operations to two input objects" ),
         FFilePath{ ToolsDir / TEXT("he_sop_boolean.png") },
 		TAssetPtr<UHoudiniAsset>(Cast<UHoudiniAsset>(FStringAssetReference(TEXT("HoudiniAsset'/HoudiniEngine/Tools/he_sop_boolean.he_sop_boolean'")).ResolveObject())),
@@ -799,6 +803,7 @@ FHoudiniEngineEditor::AddDefaultHoudiniToolToArray( TArray< FHoudiniToolDescript
     ToolArray.Insert( FHoudiniToolDescription{
         TEXT( "Polyreducer" ),
         EHoudiniToolType::HTOOLTYPE_OPERATOR_BATCH,
+        EHoudiniToolSelectionType::HTOOL_SELECTION_ALL,
         TEXT( "Reduces the number of polygons of the input objects" ),
         FFilePath{ ToolsDir / TEXT("he_sop_polyreduce.png") },
 		TAssetPtr<UHoudiniAsset>(Cast<UHoudiniAsset>(FStringAssetReference(TEXT("HoudiniAsset'/HoudiniEngine/Tools/he_sop_polyreduce.he_sop_polyreduce'")).ResolveObject())),
@@ -809,6 +814,7 @@ FHoudiniEngineEditor::AddDefaultHoudiniToolToArray( TArray< FHoudiniToolDescript
     ToolArray.Insert( FHoudiniToolDescription{
         TEXT( "Curve Instancer" ),
         EHoudiniToolType::HTOOLTYPE_OPERATOR_SINGLE,
+        EHoudiniToolSelectionType::HTOOL_SELECTION_CB_ONLY,
         TEXT( "Scatters and instances the input objects along a curve or in a zone defined by a closed curve." ),
         FFilePath{ ToolsDir / TEXT("he_sop_curve_instancer.png") },
 		TAssetPtr<UHoudiniAsset>(Cast<UHoudiniAsset>(FStringAssetReference(TEXT("HoudiniAsset'/HoudiniEngine/Tools/he_sop_curve_instancer.he_sop_curve_instancer'")).ResolveObject())),
@@ -1468,7 +1474,7 @@ FHoudiniEngineEditor::RestartSession()
 void
 FHoudiniEngineEditor::AddHoudiniTool( const FHoudiniTool& NewTool )
 {
-    HoudiniTools.Add( MakeShareable( new FHoudiniTool( NewTool.HoudiniAsset, NewTool.Name, NewTool.Type, NewTool.ToolTipText, NewTool.Icon, NewTool.HelpURL ) ) );
+    HoudiniTools.Add( MakeShareable( new FHoudiniTool( NewTool.HoudiniAsset, NewTool.Name, NewTool.Type, NewTool.SelectionType, NewTool.ToolTipText, NewTool.Icon, NewTool.HelpURL ) ) );
 }
 
 // #JuddHelp - I completely just commented these out. Couldn't find this elsewhere in code in our version, although it shows up many placees in new Unreal
@@ -1601,7 +1607,7 @@ FHoudiniEngineEditor::UpdateHoudiniToolList()
             CustomIconBrush = StyleSet->GetBrush( TEXT( "HoudiniEngine.HoudiniEngineLogo40" ) );
         }
 
-        HoudiniTools.Add( MakeShareable( new FHoudiniTool( HoudiniTool.HoudiniAsset, ToolName, HoudiniTool.Type, ToolTip, CustomIconBrush, HoudiniTool.HelpURL ) ) );
+        HoudiniTools.Add( MakeShareable( new FHoudiniTool( HoudiniTool.HoudiniAsset, ToolName, HoudiniTool.Type, HoudiniTool.SelectionType, ToolTip, CustomIconBrush, HoudiniTool.HelpURL ) ) );
     }
 
     for ( int32 Idx = 0; Idx < NumDefaultTools; Idx++ )

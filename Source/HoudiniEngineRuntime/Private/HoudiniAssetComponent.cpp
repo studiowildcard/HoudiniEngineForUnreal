@@ -379,6 +379,8 @@ UHoudiniAssetComponent::UHoudiniAssetComponent( const class FPostConstructInitia
 
     bEditorPropertiesNeedFullUpdate = true;
 
+    bFullyLoaded = false;
+
     Bounds = FBox( ForceInitToZero );
 }
 
@@ -718,7 +720,8 @@ UHoudiniAssetComponent::RemoveDownstreamAsset( UHoudiniAssetComponent * InDownst
 }
 
 void
-UHoudiniAssetComponent::CreateObjectGeoPartResources( TMap< FHoudiniGeoPartObject, UStaticMesh * > & StaticMeshMap )
+UHoudiniAssetComponent::CreateObjectGeoPartResources(
+    TMap< FHoudiniGeoPartObject, UStaticMesh * > & StaticMeshMap )
 {
     // Reset Houdini logo flag.
     bContainsHoudiniLogoGeometry = false;
@@ -830,7 +833,9 @@ UHoudiniAssetComponent::CreateObjectGeoPartResources( TMap< FHoudiniGeoPartObjec
                 }
 
                 // Try to update uproperty atributes
-                FHoudiniEngineUtils::UpdateUPropertyAttributesOnObject( StaticMeshComponent, HoudiniGeoPartObject );
+                // No need to update uprops if we've not yet been instanced
+                if ( bFullyLoaded )
+                    FHoudiniEngineUtils::UpdateUPropertyAttributesOnObject( StaticMeshComponent, HoudiniGeoPartObject );
             }
         }
     }
@@ -1825,28 +1830,35 @@ UHoudiniAssetComponent::UpdateEditorProperties( bool bConditionalUpdate )
 {
     AHoudiniAssetActor * HoudiniAssetActor = GetHoudiniAssetActorOwner();
 
-    if( !HoudiniAssetActor )
+    if ( !HoudiniAssetActor )
         return;
 
     FPropertyEditorModule & PropertyModule =
         FModuleManager::Get().GetModuleChecked< FPropertyEditorModule >( "PropertyEditor" );
 
-    // Locate the details panel.
-    FName DetailsPanelName = "LevelEditorSelectionDetails";
-    TSharedPtr< IDetailsView > DetailsView = PropertyModule.FindDetailView( DetailsPanelName );
-
-    if ( DetailsView.IsValid() )
+    // We want to iterate on all the details panel
+    static const FName DetailsTabIdentifiers[] = { "LevelEditorSelectionDetails", "LevelEditorSelectionDetails2", "LevelEditorSelectionDetails3", "LevelEditorSelectionDetails4" };
+    for (const FName& DetailsPanelName : DetailsTabIdentifiers )
     {
+        // Locate the details panel.
+        //FName DetailsPanelName = "LevelEditorSelectionDetails";
+        TSharedPtr< IDetailsView > DetailsView = PropertyModule.FindDetailView( DetailsPanelName );
+
+        if ( !DetailsView.IsValid() )
+        {
+            // We have no details panel, nothing to update.
+            continue;
+        }
+
         if ( DetailsView->IsLocked() )
         {
             // If details panel is locked, locate selected actors and check if this component belongs to one of them.
-
             const TArray< TWeakObjectPtr< AActor > > & SelectedDetailActors = DetailsView->GetSelectedActors();
             bool bFoundActor = false;
 
-            for ( int32 ActorIdx = 0, ActorNum = SelectedDetailActors.Num(); ActorIdx < ActorNum; ++ActorIdx )
+            for (int32 ActorIdx = 0, ActorNum = SelectedDetailActors.Num(); ActorIdx < ActorNum; ++ActorIdx)
             {
-                TWeakObjectPtr< AActor > SelectedActor = SelectedDetailActors[ ActorIdx ];
+                TWeakObjectPtr< AActor > SelectedActor = SelectedDetailActors[ActorIdx];
                 if ( SelectedActor.IsValid() && SelectedActor.Get() == HoudiniAssetActor )
                 {
                     bFoundActor = true;
@@ -1856,49 +1868,44 @@ UHoudiniAssetComponent::UpdateEditorProperties( bool bConditionalUpdate )
 
             // Details panel is locked, but our actor is not selected.
             if ( !bFoundActor )
-                return;
+                continue;
         }
         else
         {
             // If our actor is not selected (and details panel is not locked) don't do any updates.
             if ( !HoudiniAssetActor->IsSelected() )
-                return;
+                continue;
         }
-    }
-    else
-    {
-        // We have no details panel, nothing to update.
-        return;
-    }
 
-    if ( GEditor && HoudiniAssetActor && bIsNativeComponent )
-    {
-        if ( bConditionalUpdate && FSlateApplication::Get().HasAnyMouseCaptor() )
+        if ( GEditor && HoudiniAssetActor && bIsNativeComponent )
         {
-            // We want to avoid UI update if this is a conditional update and widget has captured the mouse.
-            StartHoudiniUIUpdateTicking();
-            return;
+            if ( bConditionalUpdate && FSlateApplication::Get().HasAnyMouseCaptor() )
+            {
+                // We want to avoid UI update if this is a conditional update and widget has captured the mouse.
+                StartHoudiniUIUpdateTicking();
+                continue;
+            }
+
+            TArray< UObject * > SelectedActors;
+            SelectedActors.Add( HoudiniAssetActor );
+
+            // bEditorPropertiesNeedFullUpdate is false only when small changes (parameters value) have been made
+            // We do not reselect the actor to avoid loosing the current selected parameter
+
+            // Reset selected actor to itself, force refresh and override the lock.
+            DetailsView->SetObjects( SelectedActors, bEditorPropertiesNeedFullUpdate );
+
+            if ( !bEditorPropertiesNeedFullUpdate )
+                bEditorPropertiesNeedFullUpdate = true;
+
+            if ( GUnrealEd )
+            {
+                GUnrealEd->UpdateFloatingPropertyWindows();
+            }
         }
 
-        TArray< UObject * > SelectedActors;
-        SelectedActors.Add( HoudiniAssetActor );
-        
-        // bEditorPropertiesNeedFullUpdate is false only when small changes (parameters value) have been made
-        // We do not reselect the actor to avoid loosing the current selected parameter
-
-        // Reset selected actor to itself and force refresh
-        DetailsView->SetObjects( SelectedActors, bEditorPropertiesNeedFullUpdate );
-		
-        if ( !bEditorPropertiesNeedFullUpdate )
-            bEditorPropertiesNeedFullUpdate = true;
-
-        if ( GUnrealEd )
-        {
-            GUnrealEd->UpdateFloatingPropertyWindows();
-        }
+        StopHoudiniUIUpdateTicking();
     }
-
-    StopHoudiniUIUpdateTicking();
 }
 
 void
@@ -2489,6 +2496,7 @@ UHoudiniAssetComponent::OnComponentClipboardCopy( UHoudiniAssetComponent * Houdi
     {
         // This component has been loaded.
         bLoadedComponent = true;
+        bFullyLoaded = false;
     }
 
     // Mark this component as imported.
@@ -2763,16 +2771,17 @@ UHoudiniAssetComponent::OnUpdateTransform( bool bSkipPhysicsMove )
 void
 UHoudiniAssetComponent::CheckedUploadTransform()
 {
-    // Only if asset has been cooked.
-    if ( AssetCookCount > 0 )
+    // Only if the asset is done loading, else this might cause a cook 
+    // upon loading a map if the asset has TransformChangeTRiggersCook enabled
+    if ( !bFullyLoaded )
+        return;
+
+    // If we have to upload transforms.
+    if ( bUploadTransformsToHoudiniEngine && AssetCookCount > 0 )
     {
-        // If we have to upload transforms.
-        if ( bUploadTransformsToHoudiniEngine )
-        {
-            // Retrieve the current component-to-world transform for this component.
-            if ( !FHoudiniEngineUtils::HapiSetAssetTransform( AssetId, GetComponentTransform() ) )
-                HOUDINI_LOG_MESSAGE( TEXT( "Failed Uploading Transformation change back to HAPI." ) );
-        }
+        // Retrieve the current component-to-world transform for this component.
+        if ( !FHoudiniEngineUtils::HapiSetAssetTransform( AssetId, GetComponentTransform() ) )
+            HOUDINI_LOG_MESSAGE( TEXT( "Failed Uploading Transformation change back to HAPI." ) );
     }
 
         // If transforms trigger cooks, we need to schedule a cook.
@@ -3041,6 +3050,9 @@ UHoudiniAssetComponent::OnRegister()
             InstanceInput->RecreatePhysicsStates();
         }
     }
+
+    // We can now consider the asset as fully loaded
+    bFullyLoaded = true;
 }
 
 #endif // WITH_EDITOR
@@ -3454,6 +3466,7 @@ UHoudiniAssetComponent::Serialize( FArchive & Ar )
     {
         // This component has been loaded.
         bLoadedComponent = true;
+        bFullyLoaded = false;
     }
 }
 
@@ -5924,6 +5937,7 @@ UHoudiniAssetComponent::NotifyAssetNeedsToBeReinstantiated()
 {
     bLoadedComponentRequiresInstantiation = true;
     bLoadedComponent = true;
+    bFullyLoaded = false;
     AssetCookCount = 0;
     AssetId = -1;
 

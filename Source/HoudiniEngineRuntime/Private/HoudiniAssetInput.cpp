@@ -498,7 +498,7 @@ UHoudiniAssetInput::PostEditUndo()
 void
 UHoudiniAssetInput::ForceSetInputObject(UObject * InObject, int32 AtIndex, bool CommitChange)
 {
-    // Note: This method is to be only used for testing or for presetting Houdini tools input!!
+    EHoudiniAssetInputType::Enum NewInputType = EHoudiniAssetInputType::GeometryInput;
     if ( AActor* Actor = Cast<AActor>( InObject ) )
     {
         for ( UActorComponent * Component : Actor->GetComponentsByClass( UStaticMeshComponent::StaticClass() ) )
@@ -523,6 +523,8 @@ UHoudiniAssetInput::ForceSetInputObject(UObject * InObject, int32 AtIndex, bool 
             UpdateWorldOutlinerTransforms( OutlinerMesh );
 
             InputOutlinerMeshArray.Add( OutlinerMesh );
+
+            NewInputType = EHoudiniAssetInputType::WorldInput;
         }
 
         // Looking for Splines
@@ -544,6 +546,8 @@ UHoudiniAssetInput::ForceSetInputObject(UObject * InObject, int32 AtIndex, bool 
             UpdateWorldOutlinerTransforms( OutlinerMesh );
 
             InputOutlinerMeshArray.Add( OutlinerMesh );
+
+            NewInputType = EHoudiniAssetInputType::WorldInput;
         }
 
         // Looking for houdini assets
@@ -569,6 +573,8 @@ UHoudiniAssetInput::ForceSetInputObject(UObject * InObject, int32 AtIndex, bool 
 
                 // Mark as disconnected since we need to reconnect to the new asset.
                 bInputAssetConnectedInHoudini = false;
+
+                NewInputType = EHoudiniAssetInputType::AssetInput;
             }
         }
 
@@ -576,7 +582,8 @@ UHoudiniAssetInput::ForceSetInputObject(UObject * InObject, int32 AtIndex, bool 
         if ( ALandscapeProxy * Landscape = Cast< ALandscapeProxy >( Actor ) )
         {
             // Store new landscape.
-            InputLandscapeProxy = Landscape;
+            OnLandscapeActorSelected( Actor );
+            NewInputType = EHoudiniAssetInputType::LandscapeInput;
         }
     }
     else
@@ -604,10 +611,7 @@ UHoudiniAssetInput::ForceSetInputObject(UObject * InObject, int32 AtIndex, bool 
 
     if( CommitChange )
     {
-        if( InputOutlinerMeshArray.Num() > 0 )
-            ChangeInputType( EHoudiniAssetInputType::WorldInput );
-        else
-            ChangeInputType( EHoudiniAssetInputType::GeometryInput );
+        ChangeInputType( NewInputType );
 
         MarkChanged();
     }

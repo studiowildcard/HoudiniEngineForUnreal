@@ -120,7 +120,7 @@ struct HOUDINIENGINERUNTIME_API FHoudiniLandscapeUtils
         static bool ConvertHeightfieldDataToLandscapeData(
             const TArray< float >& HeightfieldFloatValues,
             const HAPI_VolumeInfo& HeightfieldVolumeInfo,
-            const float& FloatMin, const float& FloatMax,
+            float FloatMin, float FloatMax,
             TArray< uint16 >& IntHeightData,
             FTransform& LandscapeTransform,
             int32& FinalXSize, int32& FinalYSize,
@@ -253,6 +253,8 @@ struct HOUDINIENGINERUNTIME_API FHoudiniLandscapeUtils
         // Returns an array containing the names of the non weightblended layers
         static bool GetNonWeightBlendedLayerNames( 
             const FHoudiniGeoPartObject& HeightfieldGeoPartObject, TArray<FString>& NonWeightBlendedLayerNames );
+
+        static void GetLandscapeActorBounds( ALandscape* Landscape, FVector& Origin, FVector& Extents );
 
         //--------------------------------------------------------------------------------------------------
         // Unreal to Houdini - MESH / POINTS
