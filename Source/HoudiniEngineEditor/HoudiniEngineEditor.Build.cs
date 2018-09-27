@@ -29,7 +29,7 @@
 
 /*
 
-    Houdini Version: 16.5.553
+    Houdini Version: 16.5.571
     Houdini Engine Version: 3.1.14
     Unreal Version: 4.5.0 (ARK)
 
@@ -44,7 +44,7 @@ public class HoudiniEngineEditor : ModuleRules
     {
         PCHUsage = PCHUsageMode.UseSharedPCHs;
         string HFSPath = "Houdini";
-        string HoudiniVersion = "16.5.477";
+        string HoudiniVersion = "16.5.571";
 
         // Check if we are compiling on unsupported platforms.
         if( Target.Platform != UnrealTargetPlatform.Win64 &&

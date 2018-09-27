@@ -2710,7 +2710,7 @@ FHoudiniEngineUtils::HapiCreateInputNodeForStaticMesh(
     int32 NumLODsToExport = DoExportLODs ? StaticMesh->GetNumLODs() : 1;
     for ( int32 LODIndex = 0; LODIndex < NumLODsToExport; LODIndex++ )
     {
-        // Grab base LOD level.
+        // Grab the LOD level.
 #if WITH_EDITORONLY_DATA
     FStaticMeshSourceModel & SrcModel = StaticMesh->SourceModels[LODIndex];
 
@@ -3055,11 +3055,24 @@ FHoudiniEngineUtils::HapiCreateInputNodeForStaticMesh(
         // Marshall face material indices.
         if ( RawMesh.FaceMaterialIndices.Num() > 0 )
         {
+            // Create an array of Material Interfaces
+            TArray< UMaterialInterface * > MaterialInterfaces;
+            MaterialInterfaces.SetNum(StaticMesh->Materials.Num());
+            for( int32 MatIdx = 0; MatIdx < StaticMesh->Materials.Num(); MatIdx++ )
+            {
+                // The actual material index needs to be read from the section info map, as it can sometimes be different
+                // Using MatIdx here could sometimes cause the materials to be incorrectly assigned on the faces.
+                int32 SectionMatIdx = StaticMesh->SectionInfoMap.Get( LODIndex, MatIdx ).MaterialIndex;
+                if ( !MaterialInterfaces.IsValidIndex(SectionMatIdx) )
+                    SectionMatIdx = MatIdx;
+
+                MaterialInterfaces[ SectionMatIdx ] = StaticMesh->Materials[ MatIdx ];
+            }
+
             // Create list of materials, one for each face.
             TArray< char * > StaticMeshFaceMaterials;
             FHoudiniEngineUtils::CreateFaceMaterialArray(
-            StaticMesh->Materials, RawMesh.FaceMaterialIndices,
-                StaticMeshFaceMaterials );
+                MaterialInterfaces, RawMesh.FaceMaterialIndices, StaticMeshFaceMaterials );
 
             // Get name of attribute used for marshalling materials.
             std::string MarshallingAttributeName = HAPI_UNREAL_ATTRIB_MATERIAL;
@@ -5993,8 +6006,7 @@ FHoudiniEngineUtils::ExtractRawName( const FString & Name )
 #if WITH_EDITOR
 void
 FHoudiniEngineUtils::CreateFaceMaterialArray(
-	const TArray< UMaterialInterface* > & Materials, const TArray< int32 > & FaceMaterialIndices,
-    TArray< char * > & OutStaticMeshFaceMaterials )
+    const TArray< UMaterialInterface * >& Materials, const TArray< int32 > & FaceMaterialIndices, TArray< char * > & OutStaticMeshFaceMaterials )
 {
     // We need to create list of unique materials.
     TArray< char * > UniqueMaterialList;
