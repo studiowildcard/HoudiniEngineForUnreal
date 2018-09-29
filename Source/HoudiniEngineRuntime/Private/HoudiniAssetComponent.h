@@ -705,7 +705,8 @@ public:
         TArray< UHoudiniAssetInstanceInput * > InstanceInputs;
 
         /** List of dependent downstream asset connections that have this asset as an asset input. **/
-        TMap< UHoudiniAssetComponent * , TSet< int32 > > DownstreamAssetConnections;
+        //ATLAS - ScottM: crash fix due to invalid component pointers (use TWeakObjectPtr<UHoudiniAssetComponent> instead)
+        TMap< TWeakObjectPtr<UHoudiniAssetComponent> , TSet< int32 > > DownstreamAssetConnections;
 
         /** Map of HAPI objects and corresponding static meshes. Also map of static meshes and corresponding components. **/
         TMap< FHoudiniGeoPartObject, UStaticMesh * > StaticMeshes;

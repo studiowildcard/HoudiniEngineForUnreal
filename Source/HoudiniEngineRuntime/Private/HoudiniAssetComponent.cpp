@@ -1388,11 +1388,13 @@ UHoudiniAssetComponent::PostCook( bool bCookError )
     // Invoke cooks of downstream assets.
     if ( bCookingTriggersDownstreamCooks )
     {
-        for ( TMap<UHoudiniAssetComponent *, TSet< int32 > >::TIterator IterAssets( DownstreamAssetConnections );
-            IterAssets;
-            ++IterAssets )
+        //ATLAS - ScottM: crash fix due to invalid component pointers (use TWeakObjectPtr<UHoudiniAssetComponent> instead)
+        for (auto& pair : DownstreamAssetConnections)
         {
-            UHoudiniAssetComponent * DownstreamAsset = IterAssets.Key();
+            if (!pair.Key.IsValid())
+                continue;
+
+            UHoudiniAssetComponent * DownstreamAsset = pair.Key.Get();
             if ( !DownstreamAsset )
                 continue;
 
@@ -3329,6 +3331,16 @@ UHoudiniAssetComponent::Serialize( FArchive & Ar )
     Ar << HandleComponents;
 
     // Serialize downstream asset connections.
+    //ATLAS - ScottM: crash fix due to invalid component pointers (use TWeakObjectPtr<UHoudiniAssetComponent> instead)
+    if (Ar.IsSaving())
+    {
+        auto OldDownstreamAssetConnections = MoveTemp(DownstreamAssetConnections);
+        for (auto& pair : OldDownstreamAssetConnections)
+        {
+            if (pair.Key.IsValid())
+                DownstreamAssetConnections.Add(pair.Key, MoveTemp(pair.Value));
+        }
+    }
     Ar << DownstreamAssetConnections;
 
     // Serialize Landscape/GeoPart map
@@ -4898,12 +4910,14 @@ UHoudiniAssetComponent::ClearInputs()
 void
 UHoudiniAssetComponent::ClearDownstreamAssets()
 {
-    for ( TMap< UHoudiniAssetComponent *, TSet< int32 > >::TIterator IterAssets(DownstreamAssetConnections );
-        IterAssets; ++IterAssets )
+    //ATLAS - ScottM: crash fix due to invalid component pointers (use TWeakObjectPtr<UHoudiniAssetComponent> instead)
+    for (auto& pair : DownstreamAssetConnections)
     {
-        UHoudiniAssetComponent * DownstreamAsset = IterAssets.Key();
-        TSet< int32 > & LocalInputIndicies = IterAssets.Value();
-        for ( auto LocalInputIndex : LocalInputIndicies )
+        if (!pair.Key.IsValid())
+            continue;
+
+        UHoudiniAssetComponent * DownstreamAsset = pair.Key.Get();
+        for ( auto LocalInputIndex : pair.Value )
         {
             if( DownstreamAsset->Inputs.IsValidIndex( LocalInputIndex ) && DownstreamAsset->Inputs[ LocalInputIndex ] != nullptr )
             {
@@ -5959,3 +5973,4 @@ UHoudiniAssetComponent::NotifyAssetNeedsToBeReinstantiated()
 }
 
 #undef LOCTEXT_NAMESPACE
+
